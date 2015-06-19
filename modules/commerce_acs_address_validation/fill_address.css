@@ -1,0 +1,9 @@
+.row-highlight{
+
+}
+.acs-addresses tr{
+cursor:pointer;
+}
+.acs-addresses tr:hover{
+background-color:#dbdbdb;
+}
