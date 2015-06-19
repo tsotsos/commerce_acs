@@ -8,6 +8,8 @@
  */
 
 function commerce_acs_settings_form($form, &$form_state) {
+  module_load_include('inc', 'commerce_acs', 'include/commerce_acs_wsdl');
+  $values = variable_get('acs_settings');
   $form['api'] = array(
     '#type' => 'fieldset',
     '#title' => t('ACS API credentials') ,
@@ -17,42 +19,208 @@ function commerce_acs_settings_form($form, &$form_state) {
   $form['api']['commerce_acs_customerid'] = array(
     '#type' => 'textfield',
     '#title' => t('Customer ID') ,
-    '#default_value' => variable_get('commerce_acs_customerid') ,
+    '#default_value' => $values['commerce_acs_customerid'],
     '#required' => TRUE,
   );
   $form['api']['commerce_acs_companyid'] = array(
     '#type' => 'textfield',
     '#title' => t('Company ID') ,
-    '#default_value' => variable_get('commerce_acs_companyid') ,
+    '#default_value' => $values['commerce_acs_companyid'] ,
     '#required' => TRUE,
   );
   $form['api']['commerce_acs_companypass'] = array(
     '#type' => 'textfield',
     '#title' => t('Company password') ,
-    '#default_value' => variable_get('commerce_acs_companypass') ,
+    '#default_value' => $values['commerce_acs_companypass'] ,
     '#required' => TRUE,
   );
   $form['api']['commerce_acs_username'] = array(
     '#type' => 'textfield',
     '#title' => t('Username') ,
-    '#default_value' => variable_get('commerce_acs_username') ,
+    '#default_value' => $values['commerce_acs_username'] ,
     '#required' => TRUE,
   );
   $form['api']['commerce_acs_password'] = array(
     '#type' => 'textfield',
     '#title' => t('Password') ,
-    '#default_value' => variable_get('commerce_acs_password') ,
+    '#default_value' => $values['commerce_acs_password'] ,
     '#required' => TRUE,
   );
   $form['api']['commerce_acs_soap_server'] = array(
     '#type' => 'textfield',
     '#title' => t('ACS server') ,
-    '#default_value' => variable_get('commerce_acs_soap_server', 'https://services.acscourier.net') ,
+    '#default_value' => ($values['commerce_acs_soap_server'] =! '' ? $values['commerce_acs_soap_server'] : 'https://services.acscourier.net'),
     '#required' => TRUE,
+  );
+  $form['settings'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Weight and Dimensions settings') ,
+    '#collapsible' => TRUE,
+    '#description' => t('Select weight and demensions settings') ,
+  );
+  $form['settings']['dimensions_module'] = array(
+    '#type' => 'radios',
+    '#title' => t('Check if you are using module for dimensions') ,
+    '#default_value' => $values['dimensions_module'],
+    '#options' => commerce_acs_field_types() ,
+  );
+  $form['settings']['dimensions_width'] = array(
+    '#type' => 'select',
+    '#title' => t('Dimension: Width field') ,
+    '#options' => commerce_acs_fields() ,
+    '#default_value' => $values['dimensions_width'],
+    '#states' => array(
+      'visible' => array(
+        ':input[name="dimensions_module"]' => array(
+          'value' => 0
+        ) ,
+      ) ,
+    ) ,
+  );
+  $form['settings']['dimensions_height'] = array(
+    '#type' => 'select',
+    '#title' => t('Dimension: Height field') ,
+    '#options' => commerce_acs_fields() ,
+    '#default_value' => $values['dimensions_height'],
+    '#states' => array(
+      'visible' => array(
+        ':input[name="dimensions_module"]' => array(
+          'value' => 0
+        ) ,
+      ) ,
+    ) ,
+  );
+  $form['settings']['dimensions_depth'] = array(
+    '#type' => 'select',
+    '#title' => t('Dimension: Depth field') ,
+    '#options' => commerce_acs_fields() ,
+    '#default_value' => $values['dimensions_depth'],
+    '#states' => array(
+      'visible' => array(
+        ':input[name="dimensions_module"]' => array(
+          'value' => 0
+        ) ,
+      ) ,
+    ) ,
+  );
+  $form['settings']['dimensions_unit'] = array(
+    '#type' => 'select',
+    '#title' => t('Dimensions Unit') ,
+    '#options' => array(
+      0 => 'mm',
+      1 => 'cm',
+      2 => 'in'
+    ) ,
+    '#default_value' => $values['dimensions_unit'],
+    '#states' => array(
+      'visible' => array(
+        ':input[name="dimensions_module"]' => array(
+          'value' => 0
+        ) ,
+      ) ,
+    ) ,
+  );
+  $form['settings']['dimensions_physical'] = array(
+    '#type' => 'select',
+    '#title' => t('Dimensions (Physical module)') ,
+    '#options' => commerce_acs_fields('physical') ,
+    '#default_value' => $values['dimensions_physical'],
+    '#states' => array(
+      'visible' => array(
+        ':input[name="dimensions_module"]' => array(
+          'value' => 1
+        ) ,
+      ) ,
+    ) ,
+  );
+  $form['settings']['dimensions_dimension'] = array(
+    '#type' => 'select',
+    '#title' => t('Dimensions (Dimension module)') ,
+    '#options' => commerce_acs_fields('dimension') ,
+    '#default_value' => $values['dimensions_dimension'],
+    '#states' => array(
+      'visible' => array(
+        ':input[name="dimensions_module"]' => array(
+          'value' => 2
+        ) ,
+      ) ,
+    ) ,
+  );
+  $form['settings']['weight_module'] = array(
+    '#type' => 'radios',
+    '#title' => t('Check if you are using module for weight') ,
+    '#options' => commerce_acs_field_types('weight') ,
+    '#default_value' => $values['weight_module'],
+  );
+  $form['settings']['weight_field'] = array(
+    '#type' => 'select',
+    '#title' => t('Weight field') ,
+    '#options' => commerce_acs_fields() ,
+    '#default_value' => $values['weight_field'],
+    '#states' => array(
+      'visible' => array(
+        ':input[name="weight_module"]' => array(
+          'value' => 0
+        ) ,
+      ) ,
+    ) ,
+  );
+  $form['settings']['weight_physical'] = array(
+    '#type' => 'select',
+    '#title' => t('Weight field') ,
+    '#options' => commerce_acs_fields('physical') ,
+    '#default_value' => $values['weight_physical'],
+    '#states' => array(
+      'visible' => array(
+        ':input[name="weight_module"]' => array(
+          'value' => 1
+        ) ,
+      ) ,
+    ) ,
+  );
+  $form['settings']['weight_unit'] = array(
+    '#type' => 'select',
+    '#title' => t('Weight field') ,
+    '#options' => array(
+      0 => 'kg',
+      1 => 'gr',
+      2 => 'lb',
+      3 => 'oz'
+    ) ,
+    '#default_value' => $values['weight_unit'],
+    '#states' => array(
+      'visible' => array(
+        ':input[name="weight_module"]' => array(
+          'value' => 0
+        ) ,
+      ) ,
+    ) ,
   );
   $form['actions']['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Save configuration') ,
   );
-  return system_settings_form($form);
+  return $form;
+
+}
+
+function commerce_acs_settings_form_submit($form, &$form_state) {
+  $settings['commerce_acs_customerid'] = $form_state['values']['commerce_acs_customerid'];
+  $settings['commerce_acs_companyid'] = $form_state['values']['commerce_acs_companyid'];
+  $settings['commerce_acs_companypass'] = $form_state['values']['commerce_acs_companypass'];
+  $settings['commerce_acs_username'] = $form_state['values']['commerce_acs_username'];
+  $settings['commerce_acs_password'] = $form_state['values']['commerce_acs_password'];
+  $settings['commerce_acs_soap_server'] = $form_state['values']['commerce_acs_soap_server'];
+  $settings['dimensions_module'] = $form_state['values']['dimensions_module'];
+  $settings['dimensions_width'] = $form_state['values']['dimensions_width'];
+  $settings['dimensions_height'] = $form_state['values']['dimensions_height'];
+  $settings['dimensions_depth'] = $form_state['values']['dimensions_depth'];
+  $settings['dimensions_unit'] = $form_state['values']['dimensions_unit'];
+  $settings['dimensions_physical'] = $form_state['values']['dimensions_physical'];
+  $settings['dimensions_dimension'] = $form_state['values']['dimensions_dimension'];
+  $settings['weight_module'] = $form_state['values']['weight_module'];
+  $settings['weight_field'] = $form_state['values']['weight_field'];
+  $settings['weight_unit'] = $form_state['values']['weight_unit'];
+  $settings['weight_physical'] = $form_state['values']['weight_physical'];
+  variable_set('acs_settings',$settings);
 }

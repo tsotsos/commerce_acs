@@ -7,7 +7,7 @@ function commerce_acs_wsdl_address_suggestions($credentials, $address) {
     watchdog('ACS', 'PHP SOAP extension is not enabled. Commerce ACS cannot connect with ACS server', array() , WATCHDOG_ERROR);
     return FALSE;
   }
-  $companyid = $credentials['company_id']$client = new SoapClient("https://services.acscourier.net/ACS-AddressValidationNew-portlet/api/axis/Plugin_ACSAddressValidation_ACSAddressWithConfidenceV1Service?wsdl");
+  $client = new SoapClient("https://services.acscourier.net/ACS-AddressValidationNew-portlet/api/axis/Plugin_ACSAddressValidation_ACSAddressWithConfidenceV1Service?wsdl");
   $lang = country2lang($address_raw['country']);
   $address = $address_raw['thoroughfare'] . ', ' . $address_raw['postal_code'] . ' ' . $address_raw['locality'];
   $response = ($client->addressSuggestions($companyid, $companypass, $username, $password, $address, $lang));
@@ -48,4 +48,46 @@ function commerce_acs_country2lang($country) {
   else {
     return 'EN';
   }
+}
+/*
+ * Helper function to get all fields
+*/
+
+function commerce_acs_fields($type = '') {
+  
+  if (($type == '') || (empty($type))) {
+    $fields = field_read_fields();
+  }
+  else {
+    $fields = field_read_fields(array(
+      'module' => $type
+    ));
+  }
+  $field_names[0] = t("None");
+  $i = 1;
+  
+  foreach ($fields as $name => $field) {
+    $field_names[$i] = $name;
+    $i++;
+  }
+  return $field_names;
+}
+/*
+ * Helper function to get all fields
+*/
+
+function commerce_acs_field_types($type = '') {
+  $types[0] = t('None');
+  
+  if (module_exists('physical')) {
+    array_push($types, 'Physical');
+  }
+  
+  if ($type != 'weight') {
+    
+    if (module_exists('dimension')) {
+      array_push($types, 'Dimension');
+    }
+  }
+  return $types;
 }

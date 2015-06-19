@@ -80,7 +80,7 @@ function commerce_acs_rate($shipping_service, $order) {
     }
     
     if (isset($product->field_weight[LANGUAGE_NONE][0])) {
-      $weight = $product->field_weight[LANGUAGE_NONE][0]['value']; //normal decimal field
+      $weight = $product->field_weight[LANGUAGE_NONE][0]['value'];
       $count = $line_item->quantity;
       $total_weight+= $weight * $count;
       $total_count+= $count;
@@ -112,13 +112,6 @@ function commerce_acs_details_form($pane_form, $pane_values, $checkout_pane, $or
   $pane_values['service_details']+= array(
     'name' => '',
     'express' => '',
-  );
-  $form['name'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Name') ,
-    '#description' => t('This is a demonstration field coded to fail validation for single character values.') ,
-    '#default_value' => $pane_values['service_details']['name'],
-    '#required' => TRUE,
   );
   $form['express'] = array(
     '#type' => 'checkbox',
