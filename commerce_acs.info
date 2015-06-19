@@ -1,8 +1,8 @@
 name = ACS courier
 description = Provides a method for calculating costs with ACS.
 package = Commerce (shipping)
+configure = admin/commerce/config/shipping/methods/acs/edit
 dependencies[] = commerce
 dependencies[] = commerce_shipping
 files[] = include/commerce_acs_wsdl.inc
 core = 7.x
-
