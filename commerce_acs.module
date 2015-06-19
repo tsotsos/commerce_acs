@@ -45,17 +45,17 @@ function commerce_acs_commerce_shipping_method_info() {
 function commerce_acs_commerce_shipping_service_info() {
   $shipping_services = array();
 
-  $shipping_services['acs_service'] = array(
+  $shipping_services['acs'] = array(
     'title' => t('ACS shipping service'),
     'description' => t('ACS Shipping service.'),
     'display_title' => t('Shipping'),
     'shipping_method' => 'acs',
     'price_component' => 'shipping',
     'callbacks' => array(
-      'rate' => 'commerce_acs_service_rate',
-      'details_form' => 'commerce_acs_service_details_form',
-      'details_form_validate' => 'commerce_acs_service_details_form_validate',
-      'details_form_submit' => 'commerce_acs_service_details_form_submit',
+      'rate' => 'commerce_acs_rate',
+      'details_form' => 'commerce_acs_details_form',
+      'details_form_validate' => 'commerce_acs_details_form_validate',
+      'details_form_submit' => 'commerce_acs_details_form_submit',
     ),
   );
 
@@ -66,7 +66,7 @@ function commerce_acs_commerce_shipping_service_info() {
  * Shipping service callback: returns a base price array for a shipping service
  * calculated for the given order.
  */
-function commerce_acs_service_rate($shipping_service, $order) {
+function commerce_acs_rate($shipping_service, $order) {
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
   $total_weight = 0;
   $total_count = 0;
@@ -107,7 +107,7 @@ debug($shipping);
 /**
  * Shipping service callback: returns the example shipping service details form.
  */
-function commerce_acs_service_details_form($pane_form, $pane_values, $checkout_pane, $order, $shipping_service) {
+function commerce_acs_details_form($pane_form, $pane_values, $checkout_pane, $order, $shipping_service) {
   $form = array();
 
   $pane_values['service_details'] += array(
@@ -136,7 +136,7 @@ function commerce_acs_service_details_form($pane_form, $pane_values, $checkout_p
 /**
  * Shipping service callback: validates the example shipping service details.
  */
-function commerce_acs_service_details_form_validate($details_form, $details_values, $shipping_service, $order, $form_parents) {
+function commerce_acs_details_form_validate($details_form, $details_values, $shipping_service, $order, $form_parents) {
   if (strlen($details_values['name']) < 2) {
     form_set_error(implode('][', array_merge($form_parents, array('name'))), t('You must enter a name two or more characters long.'));
 
@@ -151,7 +151,7 @@ function commerce_acs_service_details_form_validate($details_form, $details_valu
  * Shipping service callback: increases the shipping line item's unit price if
  * express delivery was selected.
  */
-function commerce_acs_service_details_form_submit($details_form, $details_values, $line_item) {
+function commerce_acs_details_form_submit($details_form, $details_values, $line_item) {
   if ($details_values['express']) {
     $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
 
