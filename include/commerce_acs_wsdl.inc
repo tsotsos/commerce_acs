@@ -64,11 +64,9 @@ function commerce_acs_fields($type = '') {
     ));
   }
   $field_names[0] = t("None");
-  $i = 1;
   
   foreach ($fields as $name => $field) {
-    $field_names[$i] = $name;
-    $i++;
+    $field_names[$name] = $name;
   }
   return $field_names;
 }
@@ -77,17 +75,64 @@ function commerce_acs_fields($type = '') {
 */
 
 function commerce_acs_field_types($type = '') {
-  $types[0] = t('None');
+  $types['none'] = t('None');
   
   if (module_exists('physical')) {
-    array_push($types, 'Physical');
+    $types['physical'] = 'Physical';
   }
   
   if ($type != 'weight') {
     
     if (module_exists('dimension')) {
-      array_push($types, 'Dimension');
+      $types['dimension'] = 'Dimension';
     }
   }
   return $types;
+}
+/*
+ * Helper function that converts weight to kg and dimensions to cm
+*/
+
+function commerce_acs_units($unit, $value) {
+  
+  switch ($unit) {
+    case 'in':
+    case 'inch':
+    case 'inches':
+      return (2.54 * $value);
+    case 'ft':
+    case 'feet':
+    case 'foot':
+      return (30.48 * $value);
+    case 'mm':
+    case 'milimeters':
+    case 'milimeter':
+      return (0.1 * $value);
+    case 'm':
+    case 'meters':
+    case 'meter':
+      return (100 * $value);
+    case 'g':
+    case 'gr':
+    case 'grams':
+      return (0.001 * $value);
+    case 'oz':
+    case 'ounce':
+    case 'ounces':
+      return (0.0283495231 * $value);
+    case 'lb':
+    case 'libres':
+    case 'pound':
+    case 'pounds':
+      return (0.45359237 * $value);
+    case 'kg':
+    case 'kgr':
+    case 'killograms':
+    case 'kilogram':
+      return $value;
+    case 'cm':
+    case 'centimeter':
+    case 'centimeters':
+      return $value;
+  }
 }

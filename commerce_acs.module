@@ -3,6 +3,7 @@
  * @file
  * Defines an example shipping method for testing and development.
  */
+  module_load_include('inc', 'commerce_acs', 'include/commerce_acs_wsdl');
 /**
  * Implements hook_menu().
  */
@@ -71,6 +72,8 @@ function commerce_acs_rate($shipping_service, $order) {
   $total_length = 0;
   $total_width = 0;
   $total_height = 0;
+  $settings = variable_get('acs_settings');
+    debug($settings);
   
   foreach ($order->commerce_line_items[LANGUAGE_NONE] as $item) {
     $line_item = commerce_line_item_load($item['line_item_id']);
@@ -78,25 +81,43 @@ function commerce_acs_rate($shipping_service, $order) {
     if ($line_item->type == 'product') {
       $product = commerce_product_load($line_item->commerce_product[LANGUAGE_NONE][0]['product_id']);
     }
-    
+    // Dimensions Physical Module
+    if ($settings['dimensions_module'] == 'physical') {
+      $dimensions = $product->$settings['dimensions_physical'];
+      $length = commerce_acs_units($dimensions[LANGUAGE_NONE][0]['unit'],$dimensions[LANGUAGE_NONE][0]['length']);
+      $width = commerce_acs_units($dimensions[LANGUAGE_NONE][0]['unit'],$dimensions[LANGUAGE_NONE][0]['width']);
+      $height = commerce_acs_units($dimensions[LANGUAGE_NONE][0]['unit'],$dimensions[LANGUAGE_NONE][0]['height']);
+    }
+    // Dimensions - Dimension Module
+    if ($settings['dimensions_module'] == 'dimension') {
+      $dimensions = $product->$settings['dimensions_dimension'];
+      $length = commerce_acs_units($settings['dimensions_unit'],$dimensions[LANGUAGE_NONE][0]['length']);
+      $width = commerce_acs_units($settings['dimensions_unit'],$dimensions[LANGUAGE_NONE][0]['width']);
+      $height = commerce_acs_units($settings['dimensions_unit'],$dimensions[LANGUAGE_NONE][0]['height']);
+    }
+    // Dimensions - Normal Fields
+    if ($settings['dimensions_module'] == 'none') {
+      $flength = $product->$settings['dimensions_length'];
+      $fwidth = $product->$settings['dimensions_width'];
+      $fheight = $product->$settings['dimensions_height'];
+      $length = commerce_acs_units($settings['dimensions_unit'],$flength[LANGUAGE_NONE][0]['value']);
+      $width = commerce_acs_units($settings['dimensions_unit'],$fwidth[LANGUAGE_NONE][0]['value']);
+      $height = commerce_acs_units($settings['dimensions_unit'],$fheight[LANGUAGE_NONE][0]['value']);
+    }
     if (isset($product->field_weight[LANGUAGE_NONE][0])) {
       $weight = $product->field_weight[LANGUAGE_NONE][0]['value'];
       $count = $line_item->quantity;
       $total_weight+= $weight * $count;
       $total_count+= $count;
     }
-    
-    if (isset($product->field_dimensions[LANGUAGE_NONE][0])) {
-      $length = $product->field_dimensions[LANGUAGE_NONE][0]['length'];
-      $width = $product->field_dimensions[LANGUAGE_NONE][0]['width'];
-      $height = $product->field_dimensions[LANGUAGE_NONE][0]['height'];
+
       $total_length+= $length * $count;
       $total_width+= $width * $count;
       $total_height+= $height * $count;
-    }
   }
   $shipping = $order_wrapper->commerce_customer_shipping->commerce_customer_address->value();
   debug($shipping);
+  debug($total_length);
   return array(
     'amount' => 2000,
     'currency_code' => $order_wrapper->commerce_order_total->currency_code->value() ,
