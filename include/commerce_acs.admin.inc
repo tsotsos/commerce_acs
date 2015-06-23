@@ -60,6 +60,12 @@ function commerce_acs_settings_form($form, &$form_state) {
     '#default_value' => $server,
     '#required' => TRUE,
   );
+  $form['credentials']['commerce_acs_from_station'] = array(
+    '#type' => 'textfield',
+    '#title' => t('ACS Sender Station') ,
+    '#default_value' => $credentials['commerce_acs_from_station'],
+    '#required' => TRUE,
+  );
   $form['settings'] = array(
     '#type' => 'fieldset',
     '#title' => t('Weight and Dimensions settings') ,
@@ -177,7 +183,7 @@ function commerce_acs_settings_form($form, &$form_state) {
     '#states' => array(
       'visible' => array(
         ':input[name="weight_module"]' => array(
-          'value' => 0
+          'value' => 'none'
         ) ,
       ) ,
     ) ,
@@ -199,16 +205,16 @@ function commerce_acs_settings_form($form, &$form_state) {
     '#type' => 'select',
     '#title' => t('Weight field') ,
     '#options' => array(
-      0 => 'kg',
-      1 => 'gr',
-      2 => 'lb',
-      3 => 'oz'
+      'kg' => 'kg',
+      'gr' => 'gr',
+      'lb' => 'lb',
+      'oz' => 'oz'
     ) ,
     '#default_value' => $settings['weight_unit'],
     '#states' => array(
       'visible' => array(
         ':input[name="weight_module"]' => array(
-          'value' => 0
+          'value' => 'none'
         ) ,
       ) ,
     ) ,
@@ -227,6 +233,7 @@ function commerce_acs_settings_form_submit($form, &$form_state) {
   $credentials['commerce_acs_username'] = $form_state['values']['commerce_acs_username'];
   $credentials['commerce_acs_password'] = $form_state['values']['commerce_acs_password'];
   $credentials['commerce_acs_soap_server'] = $form_state['values']['commerce_acs_soap_server'];
+  $credentials['commerce_acs_from_station'] = $form_state['values']['commerce_acs_from_station'];
   $settings['dimensions_module'] = $form_state['values']['dimensions_module'];
   $settings['dimensions_width'] = $form_state['values']['dimensions_width'];
   $settings['dimensions_height'] = $form_state['values']['dimensions_height'];

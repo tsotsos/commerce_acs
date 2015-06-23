@@ -1,5 +1,5 @@
 name = ACS Courier Address Validation
 description = ACS Courier address validation for Greece
 core = 7.x
-package = Commerce (shipping)
+package = Commerce ACS
 dependencies[] = commerce_acs

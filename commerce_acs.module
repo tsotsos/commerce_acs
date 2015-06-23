@@ -3,7 +3,7 @@
  * @file
  * Defines an example shipping method for testing and development.
  */
-  module_load_include('inc', 'commerce_acs', 'include/commerce_acs_wsdl');
+module_load_include('inc', 'commerce_acs', 'include/commerce_acs_wsdl');
 /**
  * Implements hook_menu().
  */
@@ -67,68 +67,40 @@ function commerce_acs_commerce_shipping_service_info() {
 
 function commerce_acs_rate($shipping_service, $order) {
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
-  $total_weight = 0;
-  $total_count = 0;
-  $total_length = 0;
-  $total_width = 0;
-  $total_height = 0;
   $settings = variable_get('acs_settings');
-    debug($settings);
-  
-  foreach ($order->commerce_line_items[LANGUAGE_NONE] as $item) {
-    $line_item = commerce_line_item_load($item['line_item_id']);
-    
-    if ($line_item->type == 'product') {
-      $product = commerce_product_load($line_item->commerce_product[LANGUAGE_NONE][0]['product_id']);
-    }
-    // Dimensions Physical Module
-    if ($settings['dimensions_module'] == 'physical') {
-      $dimensions = $product->$settings['dimensions_physical'];
-      $length = commerce_acs_units($dimensions[LANGUAGE_NONE][0]['unit'],$dimensions[LANGUAGE_NONE][0]['length']);
-      $width = commerce_acs_units($dimensions[LANGUAGE_NONE][0]['unit'],$dimensions[LANGUAGE_NONE][0]['width']);
-      $height = commerce_acs_units($dimensions[LANGUAGE_NONE][0]['unit'],$dimensions[LANGUAGE_NONE][0]['height']);
-    }
-    // Dimensions - Dimension Module
-    if ($settings['dimensions_module'] == 'dimension') {
-      $dimensions = $product->$settings['dimensions_dimension'];
-      $length = commerce_acs_units($settings['dimensions_unit'],$dimensions[LANGUAGE_NONE][0]['length']);
-      $width = commerce_acs_units($settings['dimensions_unit'],$dimensions[LANGUAGE_NONE][0]['width']);
-      $height = commerce_acs_units($settings['dimensions_unit'],$dimensions[LANGUAGE_NONE][0]['height']);
-    }
-    // Dimensions - Normal Fields
-    if ($settings['dimensions_module'] == 'none') {
-      $flength = $product->$settings['dimensions_length'];
-      $fwidth = $product->$settings['dimensions_width'];
-      $fheight = $product->$settings['dimensions_height'];
-      $length = commerce_acs_units($settings['dimensions_unit'],$flength[LANGUAGE_NONE][0]['value']);
-      $width = commerce_acs_units($settings['dimensions_unit'],$fwidth[LANGUAGE_NONE][0]['value']);
-      $height = commerce_acs_units($settings['dimensions_unit'],$fheight[LANGUAGE_NONE][0]['value']);
-    }
-    if (isset($product->field_weight[LANGUAGE_NONE][0])) {
-      $weight = $product->field_weight[LANGUAGE_NONE][0]['value'];
-      $count = $line_item->quantity;
-      $total_weight+= $weight * $count;
-      $total_count+= $count;
-    }
-
-      $total_length+= $length * $count;
-      $total_width+= $width * $count;
-      $total_height+= $height * $count;
-  }
+  $credentials = variable_get('acs_credentials');
+  $data = commerce_acs_physical_data($settings, $order);
   $shipping = $order_wrapper->commerce_customer_shipping->commerce_customer_address->value();
-  debug($shipping);
-  debug($total_length);
-  return array(
-    'amount' => 2000,
-    'currency_code' => $order_wrapper->commerce_order_total->currency_code->value() ,
-    'data' => array() ,
-  );
+  $validate = commerce_acs_wsdl_address_validation($credentials, $shipping);
+  
+  if ($validate) {
+    $data['to'] = $validate;
+    (int)$data['xrewsh'] = 2;
+    $data['asf_poso'] = '';
+    $data['zone'] = '';
+    $data['date_par'] = '';
+    $data['products'] = '';
+    $price = commerce_acs_wsdl_price_by_volume($credentials, $data);
+    dpm($price);
+    return array(
+      'amount' => $price * 100,
+      'currency_code' => $order_wrapper->commerce_order_total->currency_code->value() ,
+      'data' => array() ,
+    );
+  }
+  else {
+    return array(
+      'amount' => 0,
+      'currency_code' => $order_wrapper->commerce_order_total->currency_code->value() ,
+      'data' => array() ,
+    );
+  }
 }
 /**
  * Shipping service callback: returns the example shipping service details form.
  */
 
-function commerce_acs_details_form($pane_form, $pane_values, $checkout_pane, $order, $shipping_service) {
+function commerce_acs_details_form($pane_form, &$pane_values, $checkout_pane, $order, $shipping_service) {
   $form = array();
   $pane_values['service_details']+= array(
     'name' => '',
@@ -139,6 +111,10 @@ function commerce_acs_details_form($pane_form, $pane_values, $checkout_pane, $or
     '#title' => t('Express delivery') ,
     '#description' => t('Express delivery is really fast and you need to pay extra for this service.') ,
     '#default_value' => $pane_values['service_details']['express'],
+    '#ajax' => array(
+      'callback' => 'commerce_shipping_recalculate_services_refresh',
+      'wrapper' => 'commerce-shipping-service-ajax-wrapper',
+    ) ,
   );
   return $form;
 }
@@ -147,7 +123,7 @@ function commerce_acs_details_form($pane_form, $pane_values, $checkout_pane, $or
  */
 
 function commerce_acs_details_form_validate($details_form, $details_values, $shipping_service, $order, $form_parents) {
-  
+  /*
   if (strlen($details_values['name']) < 2) {
     form_set_error(implode('][', array_merge($form_parents, array(
       'name'
@@ -156,7 +132,7 @@ function commerce_acs_details_form_validate($details_form, $details_values, $shi
     // it's not enough to stop it from a Commerce standpoint because of the
     // combined validation / submission going on per-pane in the checkout form.
     return FALSE;
-  }
+  }   */
 }
 /**
  * Shipping service callback: increases the shipping line item's unit price if
@@ -189,5 +165,112 @@ function commerce_acs_commerce_price_component_type_info() {
       'title' => t('Express delivery') ,
       'weight' => 20,
     ) ,
+    'acs_cod_fee' => array(
+      'title' => t('Cash on delivery Acs') ,
+      'weight' => 20,
+    ) ,
   );
+}
+function commerce_acs_default_rules_configuration() {
+  $items = array();
+  $val = 2000;
+  $name = t('ACS Cash on Delivery');
+  $items['rules_commerce_acs_cod']= entity_import('rules_config','{ "rules_commerce_acs_cod" : {
+    "LABEL" : "Commerce ACS COD",
+    "PLUGIN" : "reaction rule",
+    "OWNER" : "rules",
+    "REQUIRES" : [
+      "commerce_payment",
+      "commerce_shipping",
+      "commerce_acs",
+      "commerce_line_item"
+    ],
+    "ON" : { "commerce_shipping_calculate_rate" : [] },
+    "IF" : [
+      { "commerce_payment_selected_payment_method" : {
+          "commerce_order" : [ "commerce-line-item:order" ],
+          "method_id" : "commerce_cod"
+        }
+      },
+      { "commerce_shipping_compare_shipping_service" : { "commerce_order" : [ "commerce-line-item:order" ], "service" : "acs" } }
+    ],
+    "DO" : [
+      { "commerce_acs_rules_action_calculate_cod_price" : {
+          "USING" : { "order" : [ "commerce-line-item:order" ] },
+          "PROVIDE" : { "cod_price" : { "cod_price" : "COD price" } }
+        }
+      },
+      { "commerce_line_item_unit_price_add" : {
+          "commerce_line_item" : [ "commerce_line_item" ],
+          "amount" : [ "cod-price" ],
+          "component_name" : "acs_cod_fee",
+          "round_mode" : "0"
+        }
+      }
+    ]
+  }
+}');
+  return $items;
+}
+ 
+/**
+ * Implement hook_rules_action_info().
+ */
+function commerce_acs_rules_action_info() {
+  return array(
+    'commerce_acs_rules_action_calculate_cod_price' => array(
+      'label' => t('Calculate ACS COD price'),
+      'group' => t('Custom'),
+      'parameter' => array(
+        'order' => array(
+          'type' => 'commerce_order',
+          'label' => t('Order ID'),
+          'description' => t('Enter the order ID.'),
+        ),
+      ),
+      'provides' => array(
+        'cod_price' => array(
+          'type' => 'decimal',
+          'label' => t('COD price'),
+        ),
+      ),
+    ),
+  
+  );
+}
+ 
+ 
+// This callback creates the hashed string by using the parameters provided through rules' UI
+function commerce_acs_rules_action_calculate_cod_price($order) {
+
+ $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+ $shipping = $order_wrapper->commerce_customer_shipping->commerce_customer_address->value();
+ $settings = variable_get('acs_settings');
+ $credentials = variable_get('acs_credentials');
+ $data = commerce_acs_physical_data($settings, $order);
+  $validate = commerce_acs_wsdl_address_validation($credentials, $shipping);
+  if ($validate) {
+    $data['to'] = $validate;
+    (int)$data['xrewsh'] = 2;
+    $data['asf_poso'] = '';
+    $data['zone'] = '';
+    $data['date_par'] = '';
+    $data['products'] = 'ΑΝ';
+    $ammountDet = commerce_acs_wsdl_price_by_volume($credentials,$data, true);
+    $ammountDet_ar = explode('|', $ammountDet);
+    $price = $ammountDet_ar[1]*100;
+  }
+
+  return array(
+    'cod_price' => (float) $price,
+  );
+}
+function commerce_acs_form_alter(&$form, &$form_state, $form_id) {
+    dpm($form_id);
+  switch ($form_id) {
+    case 'commerce_checkout_form_shipping':
+      drupal_add_js(drupal_get_path('module', 'commerce_acs').'/recalculate.js');
+    break;
+}
+
 }
