@@ -250,25 +250,28 @@ function commerce_acs_settings_form_submit($form, &$form_state) {
 }
 function commerce_acs_order_shipping($order) {
   $components =$order->commerce_order_total[LANGUAGE_NONE][0]['data']['components'];
- foreach (entity_metadata_wrapper('commerce_order', $order)->commerce_line_items as $delta => $line_item_wrapper) {
-    if (in_array($line_item_wrapper->type->value(), commerce_product_line_item_types())) {
-      $product_ids[] = $line_item_wrapper->commerce_product->raw();
-      $pid =$line_item_wrapper->commerce_product->raw();
+  $order_wrapper =entity_metadata_wrapper('commerce_order', $order); 
+  foreach ($order_wrapper->commerce_line_items as $delta => $item){
+    if ($item->type->value() != 'shipping'){
+      $quantity = $item->value()->quantity;
+      $pid = $item->value()->commerce_product[LANGUAGE_NONE][0]['product_id'];
       $product = commerce_product_load($pid);
-      debug($product->commerce_price);
+      $price = entity_metadata_wrapper('commerce_product', $product)->commerce_price->value();
+      $price = commerce_product_calculate_sell_price($product);
+      $price_display = commerce_currency_format($price['amount'], $price['currency_code'], $product);
+      $rows[] = array($product->title,$price_display,(int) $quantity);
     }
   }
-  //    dsm(commerce_product_load($product_id[0])->title);
-    debug($product_ids);
-
+    $header = array(t('Title') ,t('Unit Price'),t('Quantity'));
     $output =  array(
     'first_para' => array(
       '#type' => 'markup',
       '#markup' => '<p>A paragraph about some stuff...</p>',
     ),
     'second_para' => array(
-      '#items' => array('first item', 'second item', 'third item'),
-      '#theme' => 'item_list',
+      '#theme' => 'table',
+      '#header' => $header,
+      '#rows' => $rows
     ),
   );
   return $output;
