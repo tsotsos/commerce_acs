@@ -57,18 +57,18 @@ function commerce_acs_wsdl_address_validation($credentials, $address_raw) {
   }
 }
 
-function commerce_acs_wsdl_price_by_volume($credentials, $data, $extras = false) {
+function commerce_acs_wsdl_price_by_volume($credentials, $data, $extras = '') {
   
   if (!class_exists('SoapClient')) {
     watchdog('ACS', 'PHP SOAP extension is not enabled. Commerce ACS cannot connect with ACS server', array() , WATCHDOG_ERROR);
     return FALSE;
   }
   $client = new SoapClient("https://services.acscourier.net/ACSPriceCalculation-portlet/axis/Plugin_ACSPriceCalculation_ACSPriceService?wsdl");
-  $response = $client->getPriceByVolume($credentials['commerce_acs_companyid'], $credentials['commerce_acs_companypass'], $credentials['commerce_acs_username'], $credentials['commerce_acs_password'], $credentials['commerce_acs_customerid'], $credentials['commerce_acs_from_station'], $data['to'], $data['weight'], $data['width'], $data['height'], $data['length'], $data['date_par'], $data['products'], $data['xrewsh'], $data['zone'], $data['asf_poso']);
+  $response = $client->getPriceByVolume($credentials['commerce_acs_companyid'], $credentials['commerce_acs_companypass'], $credentials['commerce_acs_username'], $credentials['commerce_acs_password'], $credentials['commerce_acs_customerid'], $credentials['commerce_acs_from_station'], $data['to'], $data['weight'], $data['width'], $data['height'], $data['length'], $data['date_par'], $extras, $data['xrewsh'], $data['zone'], $data['asf_poso']);
   
   if (($response->errorMsg == '') || (empty($response->errorMsg))) {
     
-    if ($extras == true) {
+    if (!empty($extras)) {
       return $response->ammountDet;
     }
     return $response->price;

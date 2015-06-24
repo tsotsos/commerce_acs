@@ -248,3 +248,28 @@ function commerce_acs_settings_form_submit($form, &$form_state) {
   variable_set('acs_settings', $settings);
   variable_set('acs_credentials', $credentials);
 }
+function commerce_acs_order_shipping($order) {
+  $components =$order->commerce_order_total[LANGUAGE_NONE][0]['data']['components'];
+ foreach (entity_metadata_wrapper('commerce_order', $order)->commerce_line_items as $delta => $line_item_wrapper) {
+    if (in_array($line_item_wrapper->type->value(), commerce_product_line_item_types())) {
+      $product_ids[] = $line_item_wrapper->commerce_product->raw();
+      $pid =$line_item_wrapper->commerce_product->raw();
+      $product = commerce_product_load($pid);
+      debug($product->commerce_price);
+    }
+  }
+  //    dsm(commerce_product_load($product_id[0])->title);
+    debug($product_ids);
+
+    $output =  array(
+    'first_para' => array(
+      '#type' => 'markup',
+      '#markup' => '<p>A paragraph about some stuff...</p>',
+    ),
+    'second_para' => array(
+      '#items' => array('first item', 'second item', 'third item'),
+      '#theme' => 'item_list',
+    ),
+  );
+  return $output;
+}
