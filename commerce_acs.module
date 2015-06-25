@@ -86,7 +86,7 @@ function commerce_acs_rate($shipping_service, $order) {
   $data = commerce_acs_physical_data($settings, $order);
   $shipping = $order_wrapper->commerce_customer_shipping->commerce_customer_address->value();
   $validate = commerce_acs_wsdl_address_validation($credentials, $shipping);
-  
+
   if ($validate) {
     $data['to'] = $validate;
     (int)$data['xrewsh'] = 2;
@@ -95,20 +95,23 @@ function commerce_acs_rate($shipping_service, $order) {
     $data['date_par'] = '';
     $data['products'] = '';
     $price = commerce_acs_wsdl_price_by_volume($credentials, $data);
-    dpm($price);
-    return array(
+
+    $rate = array(
       'amount' => $price * 100,
       'currency_code' => $order_wrapper->commerce_order_total->currency_code->value() ,
       'data' => array() ,
     );
   }
-  else {
-    return array(
-      'amount' => 0,
-      'currency_code' => $order_wrapper->commerce_order_total->currency_code->value() ,
-      'data' => array() ,
-    );
-  }
+    if (!empty($rate)) {
+        // Cache the calculated rates for subsequent requests.
+        commerce_shipping_rates_cache_set('acs', $order, $rate);
+      }
+      else {
+        // If request fails, cache an empty array to prevent multiple failed
+        // requests since all additional requests will fail as well.
+        commerce_shipping_rates_cache_set('acs', $order, array());
+      }
+  return $rate;
 }
 /**
  * Shipping service callback: returns the example shipping service details form.

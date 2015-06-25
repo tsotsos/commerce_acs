@@ -36,6 +36,60 @@ function commerce_acs_wsdl_address_suggestions($credentials, $address) {
     return $table;
   }
 }
+function commerce_acs_wsdl_create_voucher($data) {
+  // If the SoapClient class doesn't exist, then get outta here!
+  
+  if (!class_exists('SoapClient')) {
+    watchdog('ACS', 'PHP SOAP extension is not enabled. Commerce ACS cannot connect with ACS server', array() , WATCHDOG_ERROR);
+    return FALSE;
+  }
+   $address_name = (int)$data['thoroughfare'];
+   $address_number = preg_replace('/[0-9]+/', '', $data['thoroughfare']);
+   dpm($address_number);
+  if ($data['cod_way'] =='check'){
+    $cod_way = 'Ε';
+  }
+  else{
+    $cod_way = 'Μ';
+  }
+		$params=array(
+'companyId'=> $data['commerce_acs_companyid'],
+'companyPass'=>$data['commerce_acs_companypass'] ,
+'username'=> $data['commerce_acs_username'],
+'password'=> $data['commerce_acs_password'] ,
+'diakDateParal'=> $data['date']['year'].'-'.$data['date']['month'].'-'.$data['date']['day'],
+'diakApostoleas'=> $data['commerce_acs_supervisor_name'],
+'diakParalhpthsOnoma'=> $data['name_line'],
+'diakParalhpthsDieth'=> $address_name,
+'acDiakParalhpthsDiethAr'=> $address_number,
+'acDiakParalhpthsDiethPer'=> $data['locality'],
+'diakParalhpthsThlef'=> '',
+'diakParalhpthsTk'=> $data['postal_code'],
+'stationIdDest'=> '',
+'branchIdDest'=> '',
+'diakTemaxia'=> $data['packages'],
+'diakVaros'=> $data['weight'],
+'diakXrewsh'=> $data['charge'],
+'diakWraMexri'=> '',
+'diakAntikatPoso'=> '',
+'diakTroposPlAntikat'=> $cod_way,
+'hostName'=> '',
+'diakNotes'=> $data['notes'],
+'diakCountry'=> $data['country'],
+'diakcFiller'=> '',
+'acDiakStoixs'=> '',
+'customerId'=> $data['commerce_acs_customerid'],
+'diakParalhpthsCell'=> '',
+'diakParalhpthsOrofos'=> '',
+'diakParalhpthsCompany'=> '',
+'withReturn'=> 0,
+'diakcCompCus'=> '',
+'specialDir'=> '',
+		);
+  $client = new SoapClient("https://services.acscourier.net/ACSCreateVoucher-portlet/axis/Plugin_ACSCreateVoucher_ACSVoucherService?wsdl");
+  $response = $client->__soapCall('createVoucher',$params);
+  return $response->no_pod;
+}
 
 function commerce_acs_wsdl_address_validation($credentials, $address_raw) {
   // If the SoapClient class doesn't exist, then get outta here!
@@ -67,11 +121,12 @@ function commerce_acs_wsdl_price_by_volume($credentials, $data, $extras = '') {
   $response = $client->getPriceByVolume($credentials['commerce_acs_companyid'], $credentials['commerce_acs_companypass'], $credentials['commerce_acs_username'], $credentials['commerce_acs_password'], $credentials['commerce_acs_customerid'], $credentials['commerce_acs_from_station'], $data['to'], $data['weight'], $data['width'], $data['height'], $data['length'], $data['date_par'], $extras, $data['xrewsh'], $data['zone'], $data['asf_poso']);
   
   if (($response->errorMsg == '') || (empty($response->errorMsg))) {
-    
     if (!empty($extras)) {
       return $response->ammountDet;
     }
+    else{
     return $response->price;
+    }
   }
   else {
     watchdog('ACS', 'ACS WSDL Error: ' . $response->errorMsg, array() , WATCHDOG_ERROR);
@@ -92,10 +147,9 @@ function commerce_acs_physical_data($settings, $order) {
   
   foreach ($order->commerce_line_items[LANGUAGE_NONE] as $item) {
     $line_item = commerce_line_item_load($item['line_item_id']);
-    
     if ($line_item->type == 'product') {
       $product = commerce_product_load($line_item->commerce_product[LANGUAGE_NONE][0]['product_id']);
-    }
+
     // Dimensions Physical Module
     
     if ($settings['dimensions_module'] == 'physical') {
@@ -140,6 +194,7 @@ function commerce_acs_physical_data($settings, $order) {
     $total_length+= $length * $count;
     $total_width+= $width * $count;
     $total_height+= $height * $count;
+    }
   }
   $data['weight'] = $total_weight;
   $data['length'] = $total_length;
@@ -153,7 +208,7 @@ function commerce_acs_physical_data($settings, $order) {
 
 function commerce_acs_country2lang($country) {
   
-  if (($country == 'GR') || ($country == 'CY')) {
+  if ($country == 'GR') {
     return 'GR';
   }
   else {
