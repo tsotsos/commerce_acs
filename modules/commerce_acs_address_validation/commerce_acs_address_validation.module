@@ -3,200 +3,60 @@
  * @file commerce_acs_address_validation.module
  * Demonstrates the addition of a new pane to the checkout system.
  */
-
 /**
  * Implements info_page() function.
  */
+
 function commerce_acs_address_validation_info_page() {
   return array(
-    '#markup' => t('Provides a pane for ACS Courier address validation.'),
+    '#markup' => t('Provides a pane for ACS Courier address validation.') ,
   );
 }
-
 /**
  * Implements hook_commerce_checkout_pane_info().
  */
+
 function commerce_acs_address_validation_commerce_checkout_pane_info() {
-
   $panes['commerce_acs_address_validation'] = array(
-    'title' => t('Checkout Pane ACS validation'),
+    'title' => t('Checkout Pane ACS validation') ,
     'base' => 'commerce_acs_address_validation_pane',
-
     // The checkout page where this should be displayed by default.
     'page' => 'checkout',
-    'weight' => -5,
-
-    // The form functions could be found in another file...
-    // 'file' => 'includes/pane.inc',
+    'weight' => - 5,
   );
-
   return $panes;
 }
 
-/**
- * Implements hook_commerce_checkout_pane_info_alter().
- *
- * Here we can change the definitions of panes that have been provided by this
- * or other modules.
- *
- * @param $panes
- *   All the panes that have been defined.
-
-function commerce_acs_address_validation_commerce_checkout_pane_info_alter(&$panes) {
-  if (!empty($panes['cart_contents'])) {
-    // Change the title of the "Cart Contents" pane.
-    $panes['cart_contents']['title'] = t('Your big wonderful shopping cart brimming over with shopaholic nonsense');
-  }
-}
-*/
-
-/**
- * Account pane: settings form callback.
- *
- * This form provides configuration information for the pane. In this case
- * we set a variable determining whether to request an additional email address.
-
-function commerce_acs_address_validation_pane_settings_form($checkout_pane) {
-
-  $form['commerce_acs_address_validation_request_another_email'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Request another email address.'),
-    '#description' => t('If checked, the form will request an additional email address.'),
-    '#default_value' => variable_get('commerce_acs_address_validation_request_another_email', FALSE)
-  );
-
-  return $form;
-}
-*/
-/**
- * Example Pane: form callback.
- *
- * This is a standard FAPI form which will be presented in the pane.
- * The form gathers and stores information from $order->data, an array which
- * can be populated with free-form keys and values.
- */
 function commerce_acs_address_validation_pane_checkout_form($form, &$form_state, $checkout_pane, $order) {
- drupal_add_js(drupal_get_path('module', 'commerce_acs_address_validation'). '/fill_address.js');
- drupal_add_css(drupal_get_path('module', 'commerce_acs_address_validation'). '/fill_address.css');
+  drupal_add_js(drupal_get_path('module', 'commerce_acs_address_validation') . '/fill_address.js');
+  drupal_add_css(drupal_get_path('module', 'commerce_acs_address_validation') . '/fill_address.css');
   $pane_form['validate'] = array(
-  '#type' =>'button',
-  '#value' => t('Validate Shipping Address'),
-  '#weight' => -1,
-  '#ajax' => array(
-    'callback' => 'ajax_wsdl_validate_callback',
-    'wrapper' => 'acs-validate-address-info',
-  ),
+    '#type' => 'button',
+    '#value' => t('Validate Shipping Address') ,
+    '#weight' => - 1,
+    '#ajax' => array(
+      'callback' => 'ajax_wsdl_validate_callback',
+      'wrapper' => 'acs-validate-address-info',
+    ) ,
   );
   $pane_form['adress_validate_info'] = array(
-  '#type' => 'markup',
-  '#prefix' => '<div id="acs-validate-address-info">',
-  '#suffix' => '</div>',
-  '#markup' => '',
+    '#type' => 'markup',
+    '#prefix' => '<div id="acs-validate-address-info">',
+    '#suffix' => '</div>',
+    '#markup' => '',
   );
   return $pane_form;
 }
 
-
 function ajax_wsdl_validate_callback($form, &$form_state) {
-
-  $companyid = "114087778";
-  $companypass = "5542";
-  $username = "handmadebylil";
-  $password = "5485";
-  $customerid = "2ΑΠ52213";
-  $address_raw = $form_state['values']['customer_profile_shipping']['commerce_customer_address'][LANGUAGE_NONE][0];
-  $response = acs_wsdl_connect($companyid,$companypass,$username,$password,$address_raw);
-    $form['buttons']['adress_validate_info'] = array(
-      '#type' => 'markup',
-      '#prefix' => '<div id="acs-validate-address-info">',
-      '#suffix' => '</div',
-      '#markup' => $response,
-    );
-  
+  module_load_include('inc', 'commerce_acs', 'includes/commerce_acs.api');
+  $response = commerce_acs_address_suggestions($form_state['values']['customer_profile_shipping']['commerce_customer_address'][LANGUAGE_NONE][0]);
+  $table = commerce_acs_address_suggestions_table($response);
+  $form['buttons']['adress_validate_info'] = array(
+    '#type' => 'markup',
+    '#prefix' => '<div id="acs-validate-address-info">',
+    '#suffix' => '</div',
+    '#markup' => drupal_render($table) ,
+  );
   return $form['buttons']['adress_validate_info'];
 }
-function acs_wsdl_connect($companyid,$companypass,$username,$password,$address_raw){
-  $client = new SoapClient("https://services.acscourier.net/ACS-AddressValidationNew-portlet/api/axis/Plugin_ACSAddressValidation_ACSAddressWithConfidenceV1Service?wsdl");
-  $lang = country2lang($address_raw['country']);
-  $address = $address_raw['thoroughfare'].', '.$address_raw['postal_code'].' '.$address_raw['locality'];
-  $response = ($client->addressSuggestions($companyid,$companypass,$username,$password,$address,$lang));
-  $table = '<table class="acs-addresses"><thead><th class="acs-street">'.t("Street and No").'</th><th class="acs-postal-code">'.t("Postal Code").'</th><th class="acs-city">'.t("City").'</th><th class="acs-map">'.t("Map").'</th></thead><tbody>';
-  foreach ($response as $row){
-    $table .= '<tr>';
-    $table .= '<td>'.$row->street_label.' '.$row->street_num.'</td>';
-    $table .= '<td>'.$row->tk.'</td>';
-    $table .= '<td>'.$row->perioxh.'</td>';
-    $table .= '<td><a href="http://maps.google.com/?q='.$row->street_label.' '.$row->street_num.' '.$row->tk.' '.$row->perioxh.'">Map</a></td>';
-    $table .= '</tr>';
-  }
-  $table .='</tbody></table>';
-  if ($address_raw['country'] != 'GR'){
-    return $response = t("This address cannot be validated because is not in Greece");
-  }
-  else if (($response == "") || (empty($response))){
-    return $response = t("There is no such address in @locality",array('@locality'=>$address_raw['locality']));
-  }
-  else {
-    return $table;
-  }
-}
-function country2lang($country){
-  if (($country == 'GR') || ($country == 'CY')){
-    return 'GR';
-  }
-  else{
-    return 'EN';
-  }
-}
-
-/**
- * Example pane: validation callback.
- *
-function commerce_acs_address_validation_pane_checkout_form_validate($form, &$form_state, $checkout_pane, $order) {
-  if (variable_get('commerce_acs_address_validation_request_another_email', FALSE) && !empty($form_state['values'][$checkout_pane['pane_id']])) {
-    $pane_values = $form_state['values'][$checkout_pane['pane_id']];
-
-    // Display an error if an invalid e-mail address was given.
-    if ($error = user_validate_mail($pane_values['another_email'])) {
-      form_set_error($checkout_pane['pane_id'] . '][another_email', t('Please provide a valid e-mail address.'));
-      return FALSE;
-    }
-  }
-  return TRUE;
-}
-
-/**
- * Example pane: checkout form submission callback.
- *
-function commerce_acs_address_validation_pane_checkout_form_submit($form, &$form_state, $checkout_pane, $order) {
-  if (!empty($form_state['values'][$checkout_pane['pane_id']])) {
-    $pane_values = $form_state['values'][$checkout_pane['pane_id']];
-
-    if (!empty($pane_values['another_email'])) {
-      $order->data['another_email'] = $pane_values['another_email'];
-    }
-    $order->data['nickname'] = $pane_values['nickname'];
-  }
-}
-*/
-/**
- * Example pane: presents the information we've collected in the Review checkout
- * pane.
- 
-function commerce_acs_address_validation_pane_review($form, $form_state, $checkout_pane, $order) {
-
-  $content['nickname'] = array(
-    '#type' => 'item',
-    '#title' => t('Nickname'),
-    '#markup' => check_plain($order->data['nickname']),
-  );
-  if (!empty($order->data['another_email'])) {
-    $content['another_email'] = array(
-      '#type' => 'item',
-      '#title' => t('Another Email address'),
-      '#markup' => check_plain($order->data['another_email']),
-    );
-  }
-  return drupal_render($content);
-}
-*/

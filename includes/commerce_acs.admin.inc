@@ -8,7 +8,7 @@
  */
 
 function commerce_acs_settings_form($form, &$form_state) {
-  module_load_include('inc', 'commerce_acs', 'include/commerce_acs_wsdl');
+  module_load_include('inc', 'commerce_acs', 'include/commerce_acs.api');
   $settings = variable_get('acs_settings');
   $credentials = variable_get('acs_credentials');
   

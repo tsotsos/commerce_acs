@@ -3,7 +3,7 @@
  * @file
  * Defines an example shipping method for testing and development.
  */
-module_load_include('inc', 'commerce_acs', 'includes/commerce_acs_wsdl');
+module_load_include('inc', 'commerce_acs', 'includes/commerce_acs.api');
 /**
  * Implements hook_menu().
  */
@@ -80,37 +80,33 @@ function commerce_acs_commerce_shipping_service_info() {
  */
 
 function commerce_acs_rate($shipping_service, $order) {
+  $base_price = commerce_acs_base_price_by_volume($order);
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
-  $settings = variable_get('acs_settings');
-  $credentials = variable_get('acs_credentials');
-  $data = commerce_acs_physical_data($settings, $order);
-  $shipping = $order_wrapper->commerce_customer_shipping->commerce_customer_address->value();
-  $validate = commerce_acs_wsdl_address_validation($credentials, $shipping);
-
-  if ($validate) {
-    $data['to'] = $validate;
-    (int)$data['xrewsh'] = 2;
-    $data['asf_poso'] = '';
-    $data['zone'] = '';
-    $data['date_par'] = '';
-    $data['products'] = '';
-    $price = commerce_acs_wsdl_price_by_volume($credentials, $data);
-
+  
+  if ($base_price) {
     $rate = array(
-      'amount' => $price * 100,
+      'amount' => $base_price,
       'currency_code' => $order_wrapper->commerce_order_total->currency_code->value() ,
       'data' => array() ,
     );
   }
-    if (!empty($rate)) {
-        // Cache the calculated rates for subsequent requests.
-        commerce_shipping_rates_cache_set('acs', $order, $rate);
-      }
-      else {
-        // If request fails, cache an empty array to prevent multiple failed
-        // requests since all additional requests will fail as well.
-        commerce_shipping_rates_cache_set('acs', $order, array());
-      }
+  else {
+    $rate = array(
+      'amount' => 0,
+      'currency_code' => $order_wrapper->commerce_order_total->currency_code->value() ,
+      'data' => array() ,
+    );
+  }
+  
+  if (!empty($rate)) {
+    // Cache the calculated rates for subsequent requests.
+    commerce_shipping_rates_cache_set('acs', $order, $rate);
+  }
+  else {
+    // If request fails, cache an empty array to prevent multiple failed
+    // requests since all additional requests will fail as well.
+    commerce_shipping_rates_cache_set('acs', $order, array());
+  }
   return $rate;
 }
 /**
@@ -146,22 +142,6 @@ function commerce_acs_details_form($pane_form, &$pane_values, $checkout_pane, $o
   return $form;
 }
 /**
- * Shipping service callback: validates the example shipping service details.
- */
-
-function commerce_acs_details_form_validate($details_form, $details_values, $shipping_service, $order, $form_parents) {
-  /*
-  if (strlen($details_values['name']) < 2) {
-    form_set_error(implode('][', array_merge($form_parents, array(
-      'name'
-    ))) , t('You must enter a name two or more characters long.'));
-    // Even though the form error is enough to stop the submission of the form,
-    // it's not enough to stop it from a Commerce standpoint because of the
-    // combined validation / submission going on per-pane in the checkout form.
-    return FALSE;
-  }   */
-}
-/**
  * Shipping service callback: increases the shipping line item's unit price if
  * express delivery was selected.
  */
@@ -170,77 +150,31 @@ function commerce_acs_details_form_submit($details_form, $details_values, $line_
   
   if ($line_item->order_id) {
     $order = commerce_order_load($line_item->order_id);
-    $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
-    $shipping = $order_wrapper->commerce_customer_shipping->commerce_customer_address->value();
-    $settings = variable_get('acs_settings');
-    $credentials = variable_get('acs_credentials');
-    $data = commerce_acs_physical_data($settings, $order);
   }
   
   if ($details_values['saturday']) {
     $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
-    // Build a price array for the express delivery fee.
-    $validate = commerce_acs_wsdl_address_validation($credentials, $shipping);
-    
-    if ($validate) {
-      $data['to'] = $validate;
-      (int)$data['xrewsh'] = 4;
-      $data['asf_poso'] = '';
-      $data['zone'] = '';
-      $data['date_par'] = '';
-      $ammountDet = commerce_acs_wsdl_price_by_volume($credentials, $data, '5Σ');
-      $ammountDet_ar = explode('|', $ammountDet);
-      
-      if (isset($ammountDet_ar[1])) {
-        $price = $ammountDet_ar[1] * 100;
-      }
-      else {
-        $price = 0;
-      }
-    }
+    $saturdayprice = commerce_acs_extra_price_by_volume($order, '5Σ');
     $saturday_price = array(
-      'amount' => $price,
+      'amount' => $saturdayprice,
       'currency_code' => $line_item_wrapper->commerce_unit_price->currency_code->value() ,
       'data' => array() ,
     );
-    // Add the express upcharge to the line item unit price.
     $line_item_wrapper->commerce_unit_price->amount = $line_item_wrapper->commerce_unit_price->amount->value() + 1500;
-    // Add the express delivery fee component to the unit price.
     $line_item_wrapper->commerce_unit_price->data = commerce_price_component_add($line_item_wrapper->commerce_unit_price->value() , 'acs_commerce_saturday_delivery', $saturday_price, TRUE, FALSE);
   }
   
   if ($details_values['morning']) {
     $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
-    // Build a price array for the express delivery fee.
     $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
-    // Build a price array for the express delivery fee.
-    $validate = commerce_acs_wsdl_address_validation($credentials, $shipping);
-    
-    if ($validate) {
-      $data['to'] = $validate;
-      (int)$data['xrewsh'] = 4;
-      $data['asf_poso'] = '';
-      $data['zone'] = '';
-      $data['date_par'] = '';
-      $ammountDet = commerce_acs_wsdl_price_by_volume($credentials, $data, '1Σ');
-      $ammountDet_ar = explode('|', $ammountDet);
-      
-      if (isset($ammountDet_ar[1])) {
-        $price = $ammountDet_ar[1] * 100;
-      }
-      else {
-        $price = 0;
-      }
-      $morning_price = array(
-        'amount' => $price,
-        'currency_code' => $line_item_wrapper->commerce_unit_price->currency_code->value() ,
-        'data' => array() ,
-      );
-      // Add the express upcharge to the line item unit price.
-      $line_item_wrapper->commerce_unit_price->amount = $line_item_wrapper->commerce_unit_price->amount->value() + 1500;
-      // Add the express delivery fee component to the unit price.
-      $line_item_wrapper->commerce_unit_price->data = commerce_price_component_add($line_item_wrapper->commerce_unit_price->value() , 'acs_commerce_morning_delivery', $morning_price, TRUE, FALSE);
-    }
+    $morningprice = commerce_acs_extra_price_by_volume($order, '1Σ');
+    $morning_price = array(
+      'amount' => $morningprice,
+      'currency_code' => $line_item_wrapper->commerce_unit_price->currency_code->value() ,
+      'data' => array() ,
+    );
+    $line_item_wrapper->commerce_unit_price->amount = $line_item_wrapper->commerce_unit_price->amount->value() + 1500;
+    $line_item_wrapper->commerce_unit_price->data = commerce_price_component_add($line_item_wrapper->commerce_unit_price->value() , 'acs_commerce_morning_delivery', $morning_price, TRUE, FALSE);
   }
 }
 /**
