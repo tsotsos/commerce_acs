@@ -1,0 +1,81 @@
+<?php
+
+/**
+ * Implements hook_schema().
+ * Defines the database table.
+ */
+function commerce_acs_schema() {
+
+  $schema['commerce_acs'] = array(
+    'description' => 'Stores ACS returning values for voucher and/or order.',
+    'fields' => array(
+      'acs_id'  => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique order ID.',
+      ),
+      'oid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Order id',
+      ),
+      'name' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => '',
+        'description' => 'Name of the person how made the order',
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'not null' => FALSE,
+        'default' => 0,
+        'description' => 'User id',
+      ),
+      'voucher_id' => array(
+        'length' => 255,
+        'type' => 'varchar',
+        'default' => '',
+        'description' => 'Voucher Id',
+      ),
+      'date' => array(
+        'mysql_type' => 'datetime',
+        'not null ' => TRUE,
+        'default' => format_date(time(), 'custom', 'Y-m-d 00:00:00'),
+      ),
+      'time' => array(
+        'length' => 255,
+        'type' => 'varchar',
+        'default' => '',
+        'description' => 'Time only',
+      ),
+      'packages' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'default' => 0,
+        'description' => 'Number of packages',
+      ),
+      'cod_price' => array(
+        'type' => 'float',
+        'size' => 'tiny',
+        'default' => 0,
+        'description' => 'Price of COD',
+      ),
+      'cod_type' => array(
+        'type' => 'text',
+        'size' => 'tiny',
+        'description' => 'COD payment',
+      ),
+    ),
+    'primary key' => array('acs_id'),
+    'indexes' => array(
+      'name'    => array('name'),
+      'uid' => array('uid'),
+      'voucher_id'     => array('voucher_id'),
+      'date'     => array('date'),
+    ),
+  );
+
+  return $schema;
+}

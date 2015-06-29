@@ -36,6 +36,52 @@ function commerce_acs_wsdl_address_suggestions($credentials, $address) {
     return $table;
   }
 }
+function commerce_acs_wsdl_create_update_order($data) {
+  // If the SoapClient class doesn't exist, then get outta here!
+  
+  if (!class_exists('SoapClient')) {
+    watchdog('ACS', 'PHP SOAP extension is not enabled. Commerce ACS cannot connect with ACS server', array() , WATCHDOG_ERROR);
+    return FALSE;
+  }
+  
+		$params=array(
+'Main_id'=> $data['commerce_acs_companyid'],
+'Main_password'=>$data['commerce_acs_companypass'] ,
+'User_id'=> $data['commerce_acs_username'],
+'User_password'=> $data['commerce_acs_password'] ,
+'Order_id'=> '',
+'Order_order_by'=> $data['commerce_acs_supervisor_name'],
+'Order_phone' => '222222',
+'Order_address' => 'Αναστάσεως 26',
+'Order_area' => 'Χαλκίδα',
+'Order_tk' => '34100',
+'Order_Date' => '2015-6-26',
+'Order_time_from' => '15:00',
+'Order_time_to' => '16:00',
+'Order_vehicle' => '',
+'Receiver_adderss' => $data['thoroughfare'],
+'Receiver_TK' => $data['postal_code'],
+'Reveiver_City' => $data['locality'],
+'Receiver_Phone' => '',
+'Debit_cust_code' => $data['commerce_acs_customerid'],
+'Debit_cust_AFM' => '',
+'Order_oggos' => (($data['length'] * $data['height'] * $data['depth'] ) /5000),
+'Order_varos' => $data['weight'],
+'Order_temaxia' => $data['package'],
+'order_dimensions' => '',
+'Order_remarks' => $data['notes'],
+'Order_xrewsh' => 1,
+'Order_apostoleas'=> $data['commerce_acs_supervisor_name'],
+'Order_responsible' => $data['commerce_acs_supervisor_name'],
+		);
+    
+debug($params);
+  $client = new SoapClient("http://acs-eud.acscourier.gr/acsorderservices/service.asmx?wsdl");
+ //$response = $client->__soapCall('InsertUpdateOrder',$params);
+  $response =$client->__getTypes();
+  return $response;
+}
+
 function commerce_acs_wsdl_create_voucher($data) {
   // If the SoapClient class doesn't exist, then get outta here!
   
@@ -301,4 +347,16 @@ function commerce_acs_units($unit, $value) {
     case 'centimeters':
       return $value;
   }
+}
+function commerce_acs_db_insert($data){
+  db_insert('commerce_acs')
+    ->fields($data)
+    ->execute(); 
+}
+function commerce_acs_db_fetch($oid){
+ $query = db_select('commerce_acs', 'a')
+    ->fields('a', array('voucher_id', 'date','date','packages','cod_price','cod_type'))
+    ->condition('oid', $oid)
+    ->execute(); 
+  return $query->fetchAll();
 }
