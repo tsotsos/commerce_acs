@@ -71,41 +71,63 @@ function commerce_acs_price_by_volume($order, $extras = '', $only_extra = false)
   }
 }
 
-function commerce_acs_address_suggestions_table($response) {
-  
-  if (($response == "") || (empty($response))) {
-    return $response = t("There is no such address in @locality", array(
-      '@locality' => $address_raw['locality']
-    ));
-  }
-  else {
+function commerce_acs_create_voucher($order, $form_data) {
+  module_load_include('inc', 'commerce_acs', 'includes/commerce_acs.wsdl');
+  try {
+    $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+    $settings = variable_get('acs_settings');
+    $credentials = variable_get('acs_credentials');
+    $dimensions = commerce_acs_physical_data($settings, $order);
+    $shipping = $order_wrapper->commerce_customer_shipping->commerce_customer_address->value();
+    $validate = commerce_acs_address_validation($shipping);
+    $data = array_merge($form_data, $shipping, $dimensions, $credentials, $settings);
+    $data['date'] = $data['acs_date']['year'] . '-' . $data['acs_date']['month'] . '-' . $data['acs_date']['day'];
+    $diakWraMexri = ''; //TODO
+    $total_price = '';
+    $way = '';
+    $phone_number = '';
+    $mobile_number = '';
+    $data['phone'] = '';
+    $data['cell_phone'] = '';
     
-    foreach ($response as $res) {
-      $rows[] = array(
-        $res->street_label . ' ' . $res->street_num,
-        $res->tk,
-        $res->perioxh,
-        '<a href="http://maps.google.com/?q=' . $row->street_label . ' ' . $row->street_num . ' ' . $row->tk . ' ' . $row->perioxh . '">Map</a>'
-      );
+    if (isset($shipping['phone_number'])) {
+      $phone_number = $shipping['phone_number'];
     }
-    $header = array(
-      t("Street and No") ,
-      t("Postal Code") ,
-      t("City") ,
-      t("Map")
-    );
-    $table = array(
-      '#theme' => 'table',
-      '#header' => $header,
-      '#rows' => $rows,
-      '#empty' => t('Something was wrong') ,
-      '#attributes' => array(
-        'class' => array(
-          'acs-addresses'
-        )
-      ) ,
-    );
-    return $table;
+    
+    if (isset($shipping['mobile_number'])) {
+      $mobile_number = $shipping['mobile_number'];
+    }
+    
+    if (!empty($data['options']['acs_cod_fee'])) {
+      $extras[] = 'ΑΝ';
+      $amount = $order_wrapper->commerce_order_total->value();
+      $total_price = commerce_currency_amount_to_decimal($amount['amount'], $total_price['currency_code']);
+      
+      if ($data['cod_way'] == 'cash') {
+        $way = 'Μ';
+      }
+      else {
+        $way = 'Ε';
+      }
+    }
+    
+    if (!empty($data['options']['acs_commerce_saturday_delivery'])) {
+      $extras[] = '1Σ';
+    }
+    
+    if (!empty($data['options']['acs_commerce_morning_delivery'])) {
+      $extras[] = '5Σ';
+    }
+    $extras = implode(',', $extras);
+    $address_number = preg_replace('/\D/', '', $data['thoroughfare']);
+    $address_name = preg_replace('/[0-9]+/', '', $data['thoroughfare']);
+    $service = New AcsService('https://services.acscourier.net/ACSCreateVoucher-portlet/axis/Plugin_ACSCreateVoucher_ACSVoucherService?wsdl');
+    $voucher = $service->createVoucher($credentials['commerce_acs_companyid'], $credentials['commerce_acs_companypass'], $credentials['commerce_acs_username'], $credentials['commerce_acs_password'], $data['date'], $data['sender'], $data['name_line'], $address_name, $address_number, $data['locality'], $phone_number, $data['postal_code'], $validate, '', $data['packages'], $data['weight'], $data['charge'], $diakWraMexri, $total_price, $way, '', $data['notes'], $data['country'], '', $extras, $credentials['commerce_acs_customerid'], $mobile_number, '', '', '', '', '', '');
+    return $voucher->no_pod;
+  }
+  catch(Exception $e) {
+    drupal_set_message($e->getMessage() , 'Warning');
+    return null;
   }
 }
 
@@ -207,6 +229,44 @@ function commerce_acs_wsdl_create_voucher($data) {
   $client = new SoapClient("https://services.acscourier.net/ACSCreateVoucher-portlet/axis/Plugin_ACSCreateVoucher_ACSVoucherService?wsdl");
   $response = $client->__soapCall('createVoucher', $params);
   return $response->no_pod;
+}
+
+function commerce_acs_address_suggestions_table($response) {
+  
+  if (($response == "") || (empty($response))) {
+    return $response = t("There is no such address in @locality", array(
+      '@locality' => $address_raw['locality']
+    ));
+  }
+  else {
+    
+    foreach ($response as $res) {
+      $rows[] = array(
+        $res->street_label . ' ' . $res->street_num,
+        $res->tk,
+        $res->perioxh,
+        '<a href="http://maps.google.com/?q=' . $row->street_label . ' ' . $row->street_num . ' ' . $row->tk . ' ' . $row->perioxh . '">Map</a>'
+      );
+    }
+    $header = array(
+      t("Street and No") ,
+      t("Postal Code") ,
+      t("City") ,
+      t("Map")
+    );
+    $table = array(
+      '#theme' => 'table',
+      '#header' => $header,
+      '#rows' => $rows,
+      '#empty' => t('Something was wrong') ,
+      '#attributes' => array(
+        'class' => array(
+          'acs-addresses'
+        )
+      ) ,
+    );
+    return $table;
+  }
 }
 /*
  * Helper function to determine language
@@ -311,7 +371,7 @@ function commerce_acs_fields($type = '') {
   return $field_names;
 }
 /*
- * Helper function to get all fields
+ * Helper function to get all fields types
 */
 
 function commerce_acs_field_types($type = '') {
@@ -377,8 +437,32 @@ function commerce_acs_units($unit, $value) {
   }
 }
 
-function commerce_acs_db_insert($data) {
-  db_insert('commerce_acs')->fields($data)->execute();
+function commerce_acs_db_insert($order, $form_data, $voucher_id) {
+  $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+  $settings = variable_get('acs_settings');
+  $credentials = variable_get('acs_credentials');
+  $dimensions = commerce_acs_physical_data($settings, $order);
+  $shipping = $order_wrapper->commerce_customer_shipping->commerce_customer_address->value();
+  $date = $form_data['acs_date']['year'] . '-' . $form_data['acs_date']['month'] . '-' . $form_data['acs_date']['day'];
+  $total_price = '';
+  $way = '';
+  if (!empty($form_data['options']['acs_cod_fee'])) {
+    $amount = $order_wrapper->commerce_order_total->value();
+    $total_price = commerce_currency_amount_to_decimal($amount['amount'], $total_price['currency_code']);
+    $way =$form_data['cod_way'];
+  }
+  $database_data = array(
+    'oid' => $order->order_id,
+    'name' => $shipping['name_line'],
+    'uid' => $order->uid,
+    'voucher_id' => $voucher_id,
+    'date' => $date,
+    'time' => '',
+    'packages' => $form_data['packages'],
+    'cod_price' => $total_price,
+    'cod_type' => $way,
+  );
+  db_insert('commerce_acs')->fields($database_data)->execute();
 }
 
 function commerce_acs_db_fetch($oid) {
