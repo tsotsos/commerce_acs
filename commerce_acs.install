@@ -45,13 +45,6 @@ function commerce_acs_schema() {
         'default' => '',
         'description' => 'Name of the person how made the order',
       ),
-      'receiver' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'not null' => FALSE,
-        'default' => '',
-        'description' => 'Name of the person who will receive the order',
-      ),
       'uid' => array(
         'type' => 'int',
         'not null' => FALSE,

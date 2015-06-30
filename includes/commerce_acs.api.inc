@@ -444,8 +444,8 @@ function commerce_acs_db_insert($order, $form_data, $voucher_id) {
   $dimensions = commerce_acs_physical_data($settings, $order);
   $shipping = $order_wrapper->commerce_customer_shipping->commerce_customer_address->value();
   $date = $form_data['acs_date']['year'] . '-' . $form_data['acs_date']['month'] . '-' . $form_data['acs_date']['day'];
-  $total_price = '';
-  $way = '';
+  $total_price = null;
+  $way = null;
   if (!empty($form_data['options']['acs_cod_fee'])) {
     $amount = $order_wrapper->commerce_order_total->value();
     $total_price = commerce_currency_amount_to_decimal($amount['amount'], $total_price['currency_code']);
