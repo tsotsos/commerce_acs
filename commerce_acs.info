@@ -4,5 +4,4 @@ package = Commerce ACS
 configure = admin/commerce/config/shipping/methods/acs/edit
 dependencies[] = commerce
 dependencies[] = commerce_shipping
-files[] = includes/commerce_acs_wsdl.inc
 core = 7.x

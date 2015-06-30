@@ -20,6 +20,24 @@ function commerce_acs_schema() {
         'default' => 0,
         'description' => 'Order id',
       ),
+      'voucher_id' => array(
+        'length' => 255,
+        'type' => 'varchar',
+        'default' => '',
+        'description' => 'Voucher Id',
+      ),
+      'acs_order_id' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Order id - ACS',
+      ),
+      'mass_number' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Order id - ACS',
+      ),
       'name' => array(
         'type' => 'varchar',
         'length' => 255,
@@ -27,17 +45,18 @@ function commerce_acs_schema() {
         'default' => '',
         'description' => 'Name of the person how made the order',
       ),
+      'receiver' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => '',
+        'description' => 'Name of the person who will receive the order',
+      ),
       'uid' => array(
         'type' => 'int',
         'not null' => FALSE,
         'default' => 0,
         'description' => 'User id',
-      ),
-      'voucher_id' => array(
-        'length' => 255,
-        'type' => 'varchar',
-        'default' => '',
-        'description' => 'Voucher Id',
       ),
       'date' => array(
         'mysql_type' => 'datetime',

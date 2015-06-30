@@ -4,6 +4,8 @@
  * Defines an example shipping method for testing and development.
  */
 module_load_include('inc', 'commerce_acs', 'includes/commerce_acs.api');
+module_load_include('inc', 'commerce_acs', 'includes/commerce_acs.rules');
+module_load_include('inc', 'commerce_acs', 'includes/commerce_acs.rules_defaults');
 /**
  * Implements hook_menu().
  */
@@ -80,7 +82,7 @@ function commerce_acs_commerce_shipping_service_info() {
  */
 
 function commerce_acs_rate($shipping_service, $order) {
-  $base_price = commerce_acs_base_price_by_volume($order);
+  $base_price = commerce_acs_price_by_volume($order);
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
   
   if ($base_price) {
@@ -154,7 +156,7 @@ function commerce_acs_details_form_submit($details_form, $details_values, $line_
   
   if ($details_values['saturday']) {
     $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
-    $saturdayprice = commerce_acs_extra_price_by_volume($order, '5Σ');
+    $saturdayprice = commerce_acs_price_by_volume($order, '5Σ',true);
     $saturday_price = array(
       'amount' => $saturdayprice,
       'currency_code' => $line_item_wrapper->commerce_unit_price->currency_code->value() ,
@@ -167,7 +169,7 @@ function commerce_acs_details_form_submit($details_form, $details_values, $line_
   if ($details_values['morning']) {
     $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
     $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
-    $morningprice = commerce_acs_extra_price_by_volume($order, '1Σ');
+    $morningprice = commerce_acs_price_by_volume($order, '1Σ',true);
     $morning_price = array(
       'amount' => $morningprice,
       'currency_code' => $line_item_wrapper->commerce_unit_price->currency_code->value() ,

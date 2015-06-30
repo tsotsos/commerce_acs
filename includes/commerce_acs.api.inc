@@ -36,7 +36,7 @@ function commerce_acs_address_validation($data) {
   }
 }
 
-function commerce_acs_base_price_by_volume($order) {
+function commerce_acs_price_by_volume($order, $extras = '', $only_extra = false) {
   module_load_include('inc', 'commerce_acs', 'includes/commerce_acs.wsdl');
   try {
     $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
@@ -48,41 +48,25 @@ function commerce_acs_base_price_by_volume($order) {
     
     if ($validate) {
       $price = new AcsService('https://services.acscourier.net/ACSPriceCalculation-portlet/api/axis/Plugin_ACSPriceCalculation_ACSPriceService?wsdl');
-      $response = $price->getPriceByVolume($credentials['commerce_acs_companyid'], $credentials['commerce_acs_companypass'], $credentials['commerce_acs_username'], $credentials['commerce_acs_password'], $credentials['commerce_acs_customerid'], $credentials['commerce_acs_from_station'], $validate, $physical['weight'], $physical['width'], $physical['height'], $physical['length'], '', '', 2, '', '');
+      $response = $price->getPriceByVolume($credentials['commerce_acs_companyid'], $credentials['commerce_acs_companypass'], $credentials['commerce_acs_username'], $credentials['commerce_acs_password'], $credentials['commerce_acs_customerid'], $credentials['commerce_acs_from_station'], $validate, $physical['weight'], $physical['width'], $physical['height'], $physical['length'], '', $extras, 2, '', '');
     }
-    return $response->price * 100;
+    
+    if ($only_extra == false) {
+      return $response->price * 100;
+    }
+    else {
+      $extra_price = explode('|', $response->ammountDet);
+      
+      if (!$response->errorMsg) {
+        return $extra_price[1] * 100;
+      }
+      else {
+        drupal_set_message($response->errorMsg, 'warning');
+      }
+    }
   }
   catch(Exception $e) {
     drupal_set_message($e->getMessage() , 'Warning');
-    return null;
-  }
-}
-
-function commerce_acs_extra_price_by_volume($order, $extra) {
-  module_load_include('inc', 'commerce_acs', 'includes/commerce_acs.wsdl');
-  try {
-    $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
-    $settings = variable_get('acs_settings');
-    $credentials = variable_get('acs_credentials');
-    $physical = commerce_acs_physical_data($settings, $order);
-    $shipping = $order_wrapper->commerce_customer_shipping->commerce_customer_address->value();
-    $validate = commerce_acs_address_validation($shipping);
-    
-    if ($validate) {
-      $price = new AcsService('https://services.acscourier.net/ACSPriceCalculation-portlet/api/axis/Plugin_ACSPriceCalculation_ACSPriceService?wsdl');
-      $response = $price->getPriceByVolume($credentials['commerce_acs_companyid'], $credentials['commerce_acs_companypass'], $credentials['commerce_acs_username'], $credentials['commerce_acs_password'], $credentials['commerce_acs_customerid'], $credentials['commerce_acs_from_station'], $validate, $physical['weight'], $physical['width'], $physical['height'], $physical['length'], '', $extra, 2, '', '');
-    }
-    $extra_price = explode('|', $response->ammountDet);
-    
-    if (!$response->errorMsg) {
-      return $extra_price[1] * 100;
-    }
-    else {
-      drupal_set_message($response->errorMsg, 'warning');
-    }
-  }
-  catch(Exception $e) {
-    drupal_set_message($e->getMessage() , 'warning');
     return null;
   }
 }
@@ -224,7 +208,6 @@ function commerce_acs_wsdl_create_voucher($data) {
   $response = $client->__soapCall('createVoucher', $params);
   return $response->no_pod;
 }
-
 /*
  * Helper function to determine language
 */

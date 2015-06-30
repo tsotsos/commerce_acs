@@ -60,6 +60,12 @@ function commerce_acs_settings_form($form, &$form_state) {
     '#default_value' => $credentials['commerce_acs_password'],
     '#required' => TRUE,
   );
+  $form['credentials']['commerce_acs_afm'] = array(
+    '#type' => 'textfield',
+    '#title' => t('AFM - Tax ID') ,
+    '#default_value' => $credentials['commerce_acs_afm'],
+    '#required' => TRUE,
+  );
   $form['credentials']['commerce_acs_soap_server'] = array(
     '#type' => 'textfield',
     '#title' => t('ACS server') ,
@@ -258,6 +264,7 @@ function commerce_acs_settings_form_submit($form, &$form_state) {
   $credentials['commerce_acs_password'] = $form_state['values']['commerce_acs_password'];
   $credentials['commerce_acs_soap_server'] = $form_state['values']['commerce_acs_soap_server'];
   $credentials['commerce_acs_from_station'] = $form_state['values']['commerce_acs_from_station'];
+  $credentials['commerce_acs_afm'] = $form_state['values']['commerce_acs_afm'];
   $settings['dimensions_module'] = $form_state['values']['dimensions_module'];
   $settings['dimensions_width'] = $form_state['values']['dimensions_width'];
   $settings['dimensions_height'] = $form_state['values']['dimensions_height'];
