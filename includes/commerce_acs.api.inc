@@ -99,7 +99,6 @@ function commerce_acs_create_voucher($order, $form_data) {
     }
     
     if (!empty($data['options']['acs_cod_fee'])) {
-      $extras[] = 'ΑΝ';
       $amount = $order_wrapper->commerce_order_total->value();
       $total_price = commerce_currency_amount_to_decimal($amount['amount'], $total_price['currency_code']);
       
@@ -110,14 +109,7 @@ function commerce_acs_create_voucher($order, $form_data) {
         $way = 'Ε';
       }
     }
-    
-    if (!empty($data['options']['acs_commerce_saturday_delivery'])) {
-      $extras[] = '1Σ';
-    }
-    
-    if (!empty($data['options']['acs_commerce_morning_delivery'])) {
-      $extras[] = '5Σ';
-    }
+    $extras = commerce_acs_extra_services($data);
     $extras = implode(',', $extras);
     $address_number = preg_replace('/\D/', '', $data['thoroughfare']);
     $address_name = preg_replace('/[0-9]+/', '', $data['thoroughfare']);
@@ -126,8 +118,24 @@ function commerce_acs_create_voucher($order, $form_data) {
     return $voucher->no_pod;
   }
   catch(Exception $e) {
-    drupal_set_message($e->getMessage() , 'Warning');
+    drupal_set_message($e->getMessage() , 'warning');
     return null;
+  }
+}
+
+function commerce_acs_delete_voucher($voucher_id) {
+  try {
+    module_load_include('inc', 'commerce_acs', 'includes/commerce_acs.wsdl');
+    $service = new AcsService('https://services.acscourier.net/ACSDeleteVoucher-portlet/axis/Plugin_DeleteVoucher_ACSDeleteVoucherService?wsdl');
+    $credentials = variable_get('acs_credentials');
+    $response = $service->deleteVoucher($credentials['commerce_acs_companyid'], $credentials['commerce_acs_companypass'], $credentials['commerce_acs_username'], $credentials['commerce_acs_password'], $voucher_id);
+    
+    if ($response->error) {
+      drupal_set_message($response->error, 'warning');
+    }
+  }
+  catch(Exception $e) {
+    drupal_set_message($e->getMessage() , 'warning');
   }
 }
 
@@ -437,7 +445,7 @@ function commerce_acs_units($unit, $value) {
   }
 }
 
-function commerce_acs_db_insert($order, $form_data, $voucher_id) {
+function commerce_acs_db_insert($order, $form_data, $voucher_id, $oid = false) {
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
   $settings = variable_get('acs_settings');
   $credentials = variable_get('acs_credentials');
@@ -446,11 +454,20 @@ function commerce_acs_db_insert($order, $form_data, $voucher_id) {
   $date = $form_data['acs_date']['year'] . '-' . $form_data['acs_date']['month'] . '-' . $form_data['acs_date']['day'];
   $total_price = null;
   $way = null;
+  
   if (!empty($form_data['options']['acs_cod_fee'])) {
     $amount = $order_wrapper->commerce_order_total->value();
     $total_price = commerce_currency_amount_to_decimal($amount['amount'], $total_price['currency_code']);
-    $way =$form_data['cod_way'];
+    $way = $form_data['cod_way'];
   }
+  
+  foreach ($form_data['options'] as $option) {
+    
+    if ($option) {
+      $options[] = $option;
+    }
+  }
+  $options = ((isset($options)) ? implode(',', $options) : '');
   $database_data = array(
     'oid' => $order->order_id,
     'name' => $shipping['name_line'],
@@ -461,8 +478,16 @@ function commerce_acs_db_insert($order, $form_data, $voucher_id) {
     'packages' => $form_data['packages'],
     'cod_price' => $total_price,
     'cod_type' => $way,
+    'price' => $total_price,
+    'shipping_options' => $options,
   );
-  db_insert('commerce_acs')->fields($database_data)->execute();
+  
+  if ($oid == true) {
+    db_update('commerce_acs')->fields($database_data)->condition('oid', $order->order_id)->execute();
+  }
+  else {
+    db_insert('commerce_acs')->fields($database_data)->execute();
+  }
 }
 
 function commerce_acs_db_fetch($oid) {
@@ -475,4 +500,21 @@ function commerce_acs_db_fetch($oid) {
     'cod_type'
   ))->condition('oid', $oid)->execute();
   return $query->fetchAll();
+}
+
+function commerce_acs_extra_services($data) {
+  $extras = array();
+  
+  if (!empty($data['options']['acs_cod_fee'])) {
+    $extras[] = 'ΑΝ';
+  }
+  
+  if (!empty($data['options']['acs_commerce_saturday_delivery'])) {
+    $extras[] = '1Σ';
+  }
+  
+  if (!empty($data['options']['acs_commerce_morning_delivery'])) {
+    $extras[] = '5Σ';
+  }
+  return $extras;
 }

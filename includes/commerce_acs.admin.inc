@@ -303,7 +303,7 @@ function commerce_acs_order_shipping($order) {
         if (in_array($type, array(
           'acs_cod_fee',
           'acs_commerce_saturday_delivery',
-          'acs_cod_fee'
+          'acs_commerce_morning_delivery'
         ))) {
           array_push($options, $type);
         }
@@ -375,6 +375,7 @@ function commerce_acs_order_shipping_form($form, &$form_state, $options, $order)
   $credentials = variable_get('acs_credentials');
   $data = commerce_acs_db_fetch($order->order_id);
   $voucher_id = (isset($data[0]->voucher_id) ? $data[0]->voucher_id : '');
+  $disabled_voucher = (!empty($data[0]->voucher_id) ? TRUE : FALSE);
   $cod_way = (isset($data[0]->cod_way) ? $data[0]->cod_way : 'none');
   
   if (isset($data[0]->date)) {
@@ -395,6 +396,10 @@ function commerce_acs_order_shipping_form($form, &$form_state, $options, $order)
     '#collapsible' => TRUE,
     '#description' => t('The desired options for shipping.') ,
   );
+  $form['shipping_options']['order'] = array(
+    '#type' => 'value',
+    '#value' => $order,
+  );
   $form['shipping_options']['options'] = array(
     '#type' => 'checkboxes',
     '#options' => array(
@@ -406,13 +411,12 @@ function commerce_acs_order_shipping_form($form, &$form_state, $options, $order)
     '#description' => t('Be carefull these options by default are same as the user select them when he/she made the order.') ,
   );
   $form['shipping_options']['price'] = array(
-    '#type' => 'markup',
+    '#type' => 'textfield',
+    '#disabled' => TRUE,
+    '#size' => 6,
+    '#title' => t('Price') ,
     '#prefix' => '<div id="wrapper-price">',
     '#suffix' => '</div>',
-  );
-  $form['shipping_options']['order'] = array(
-    '#type' => 'value',
-    '#value' => $order,
   );
   $form['shipping_options']['calc_price'] = array(
     '#type' => 'button',
@@ -487,27 +491,33 @@ function commerce_acs_order_shipping_form($form, &$form_state, $options, $order)
   );
   $form['voucher']['voucher_id'] = array(
     '#type' => 'textfield',
-    '#prefix' => '<div id="voucher-id">',
-    '#suffix' => '</div>',
     '#disabled' => TRUE,
     '#default_value' => $voucher_id,
     '#title' => t('Voucher id') ,
   );
+  $form['voucher']['save'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save') ,
+    '#submit' => array(
+      'commerce_acs_order_shipping_save'
+    ) ,
+  );
   $form['voucher']['create_voucher'] = array(
-    '#type' => 'button',
-    '#value' => t('Create Voucher') ,
-    '#ajax' => array(
-      'callback' => 'commerce_acs_order_shipping_create_voucher',
-      'wrapper' => 'voucher-id',
-      'method' => 'replace',
-      'effect' => 'fade',
+    '#type' => 'submit',
+    '#value' => t('Save and Create Voucher') ,
+    '#disabled' => $disabled_voucher,
+    '#submit' => array(
+      'commerce_acs_order_shipping_create_voucher'
     ) ,
   );
   $form['voucher']['delete_voucher'] = array(
-    '#type' => 'button',
+    '#type' => 'submit',
     '#value' => t('Delete Voucher') ,
+    '#submit' => array(
+      'commerce_acs_order_shipping_delete_voucher'
+    ) ,
   );
-  $pdf_url = 'http://acs-eud.acscourier.gr/Eshops/GetVoucher.aspx?MainID=' . $credentials['commerce_acs_companyid'] . '&MainPass=' . $credentials['commerce_acs_companypass'] . '&UserID=' . $credentials['commerce_acs_username'] . '&UserPass=' . $credentials['commerce_acs_password'] . '&voucherno='.$voucher_id;
+  $pdf_url = 'http://acs-eud.acscourier.gr/Eshops/GetVoucher.aspx?MainID=' . $credentials['commerce_acs_companyid'] . '&MainPass=' . $credentials['commerce_acs_companypass'] . '&UserID=' . $credentials['commerce_acs_username'] . '&UserPass=' . $credentials['commerce_acs_password'] . '&voucherno=' . $voucher_id;
   $form['voucher']['print_voucher'] = array(
     '#type' => 'button',
     '#value' => t('PDF / Print Voucher') ,
@@ -515,79 +525,55 @@ function commerce_acs_order_shipping_form($form, &$form_state, $options, $order)
       'onclick' => 'javascript: newwindow=window.open("' . $pdf_url . '","height=500,width=300");',
     ) ,
   );
-  $form['order'] = array(
-    '#type' => 'fieldset',
-    '#prefix' => '<div id="order-create-id">',
-    '#suffix' => '</div>',
-    '#title' => t('Order') ,
-    '#collapsible' => TRUE,
-    '#description' => t('Create/Update an Order') ,
-  );
-  $form['order']['create_order'] = array(
-    '#type' => 'button',
-    '#value' => t('Create/Update Order') ,
-    '#ajax' => array(
-      'callback' => 'commerce_acs_order_shipping_create_order',
-      'wrapper' => 'order-create-id',
-      'method' => 'replace',
-      'effect' => 'fade',
-    ) ,
-  );
   return $form;
+}
+
+function commerce_acs_order_shipping_save($form, &$form_state) {
+  $order = $form_state['values']['order'];
+  commerce_acs_db_insert($order, $form_state['values'], '');
 }
 
 function commerce_acs_order_shipping_calculate_price($form, &$form_state) {
   $order = $form_state['values']['order'];
-  $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
-  $settings = variable_get('acs_settings');
-  $credentials = variable_get('acs_credentials');
-  $data = commerce_acs_physical_data($settings, $order);
-  $shipping = $order_wrapper->commerce_customer_shipping->commerce_customer_address->value();
-  $validate = commerce_acs_wsdl_address_validation($credentials, $shipping);
+  $extras = commerce_acs_extra_services($form_state['values']);
+  $extras = implode(',', $extras);
+  $price = commerce_acs_price_by_volume($order, $extras);
   
-  if ($validate) {
-    $data['to'] = $validate;
-    (int)$data['xrewsh'] = 2;
-    $data['asf_poso'] = '';
-    $data['zone'] = '';
-    $data['date_par'] = '';
-    $data['products'] = '';
-    $price = commerce_acs_wsdl_price_by_volume($credentials, $data);
-    $price_display = commerce_currency_format($price * 100, $order_wrapper->commerce_order_total->currency_code->value());
+  if ($price) {
+    $price = commerce_currency_amount_to_decimal($price);
+    $form['shipping_options']['price']['#value'] = $price;
+    return $form['shipping_options']['price'];
   }
   else {
-    $price_display = commerce_currency_format(0, $order_wrapper->commerce_order_total->currency_code->value());
+    return 0;
   }
-  return $form['price'] = $price_display;
 }
 
 function commerce_acs_order_shipping_create_voucher($form, &$form_state) {
   $order = $form_state['values']['order'];
+  $data = commerce_acs_db_fetch($order->order_id);
   $voucher_id = commerce_acs_create_voucher($order, $form_state['values']);
+  $credentials = variable_get('acs_credentials');
   
   if ($voucher_id) {
-    commerce_acs_db_insert($order, $form_state['values'], $voucher_id);
-    $form['voucher']['voucher_id']['#value'] = $voucher_id;
-    return $form['voucher']['voucher_id'];
+    
+    if (!empty($data) && empty($data[0]->voucher_id)) {
+      commerce_acs_db_insert($order, $form_state['values'], $voucher_id, true);
+    }
+    else {
+      commerce_acs_db_insert($order, $form_state['values'], $voucher_id);
+    }
   }
   else {
     drupal_set_message(t('An error ocured') , 'warning');
   }
 }
-
-function commerce_acs_order_shipping_create_order($form, &$form_state) {
+function commerce_acs_order_shipping_delete_voucher($form,&$form_state){
   $order = $form_state['values']['order'];
-  $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
-  $settings = variable_get('acs_settings');
-  $credentials = variable_get('acs_credentials');
-  $dimensions = commerce_acs_physical_data($settings, $order);
-  $shipping = $order_wrapper->commerce_customer_shipping->commerce_customer_address->value();
-  $validate = commerce_acs_wsdl_address_validation($credentials, $shipping);
-  $data = array_merge($shipping, $credentials, $dimensions);
-  $data['date'] = $form_state['values']['acs_date'];
-  $data['packages'] = $form_state['values']['packages'];
-  $data['notes'] = $form_state['values']['notes'];
-  $response = commerce_acs_wsdl_create_update_order($data);
-  dpm($response);
-  return $form;
+  $data = commerce_acs_db_fetch($order->order_id);
+  $voucher_id =$form_state['values']['voucher_id'];
+  if($voucher_id){
+    commerce_acs_delete_voucher($voucher_id);
+    commerce_acs_db_insert($order, $form_state['values'], '', true);
+  }
 }
