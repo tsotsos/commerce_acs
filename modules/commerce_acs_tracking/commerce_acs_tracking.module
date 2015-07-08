@@ -1,0 +1,133 @@
+<?php
+
+function commerce_acs_tracking_block_info() {
+  $blocks = array();
+  $blocks['acs_tracking'] = array(
+    'info' => t('ACS tracking service block') ,
+  );
+  return $blocks;
+}
+/**
+ * Implements hook_block_view().
+ */
+
+function commerce_acs_tracking_block_view($delta = '') {
+  $block = array();
+  
+  switch ($delta) {
+    case 'acs_tracking':
+      $block['subject'] = '';
+      $block['content'] = _commerce_acs_tracking_content();
+    break;
+  }
+  return $block;
+}
+
+function _commerce_acs_tracking_content() {
+  module_load_include('inc', 'commerce_acs', 'includes/commerce_acs.api');
+  // $test = commerce_acs_tracking(7086865214);
+  $output = drupal_get_form('commerce_acs_tracking_form');
+  return $output;
+}
+
+function commerce_acs_tracking_form($form, $form_state) {
+  $form = array();
+  $form['tracking_number'] = array(
+    '#type' => 'textfield',
+    '#size' => 10,
+    '#description' => t('Please insert the ACS tracking number') ,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Search order') ,
+    '#description' => t("If the amount of boxes above isn't enough, click here to add more choices.") ,
+    '#weight' => 1,
+    '#submit' => array(
+      'commerce_acs_tracking_submit'
+    ) , // If no javascript action.
+    '#ajax' => array(
+      'callback' => 'commerce_acs_tracking_ajax',
+      'wrapper' => 'tracking-results',
+      'method' => 'replace',
+    ) ,
+  );
+  $form['results'] = array(
+    '#markup' => '',
+    '#prefix' => '<div id="tracking-results">',
+    '#suffix' => '</div>',
+  );
+  return $form;
+}
+
+function commerce_acs_tracking_form_validate($form, &$form_state) {
+  
+  if (!$form_state['values']['tracking_number']) {
+    return form_set_error('tracking_number', t('Check your tracking number'));
+  }
+}
+
+function commerce_acs_tracking_submit($form, &$form_state) {
+  
+  if ($form_state['values']['tracking_number']) {
+    $tracking_number = $form_state['values']['tracking_number'];
+    $tracking_number = preg_replace('/\D/', '', $tracking_number);
+    $track = commerce_acs_tracking($tracking_number);
+    $status = commerce_acs_status($track[0]->shipment_status);
+    $table = '<table class="acs-results">
+  <tr>
+    <td>' . t('Date') . '</td>
+    <td>' . t('From') . '</td> 
+    <td>' . t('To') . '</td>
+    <td>' . t('Status') . '</td>
+  </tr>
+  <tr>
+    <td>' . $track[0]->diak_dateparal . '</td>
+    <td>' . $track[0]->sa_perigr_dest . '</td> 
+    <td>' . $track[0]->sa_perigr_paral . '</td>
+    <td>' . $status . '</td>
+  </tr>
+</table>';
+    $form['results'] = array(
+      '#markup' => $table,
+      '#prefix' => '<div id="tracking-results">',
+      '#suffix' => '</div>',
+    );
+    return $form['results'];
+  }
+  else {
+    return form_set_error('tracking_number', t('Check your tracking number'));
+  }
+}
+
+function commerce_acs_tracking_ajax($form, &$form_state) {
+  
+  if ($form_state['values']['tracking_number']) {
+    $tracking_number = $form_state['values']['tracking_number'];
+    $tracking_number = preg_replace('/\D/', '', $tracking_number);
+    $track = commerce_acs_tracking($tracking_number);
+    $status = commerce_acs_status($track[0]->shipment_status);
+    $table = '<table class="acs-results">
+  <tr>
+    <td>' . t('Date') . '</td>
+    <td>' . t('From') . '</td> 
+    <td>' . t('To') . '</td>
+    <td>' . t('Status') . '</td>
+  </tr>
+  <tr>
+    <td>' . $track[0]->diak_dateparal . '</td>
+    <td>' . $track[0]->sa_perigr_dest . '</td> 
+    <td>' . $track[0]->sa_perigr_paral . '</td>
+    <td>' . $status . '</td>
+  </tr>
+</table>';
+    $form['results'] = array(
+      '#markup' => $table,
+      '#prefix' => '<div id="tracking-results">',
+      '#suffix' => '</div>',
+    );
+    return $form['results'];
+  }
+  else {
+    return form_set_error('tracking_number', t('Check your tracking number'));
+  }
+}

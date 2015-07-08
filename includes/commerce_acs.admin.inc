@@ -262,7 +262,17 @@ function commerce_acs_settings_form_submit($form, &$form_state) {
   variable_set('acs_settings', $settings);
   variable_set('acs_credentials', $credentials);
 }
-
+function commerce_acs_order_services(){
+  module_load_include('inc', 'commerce_acs', 'includes/commerce_acs.services.form');
+  
+$output = array ('first_para' => array(
+      '#type' => 'markup',
+      '#markup' => '<p>A paragraph about some stuff...</p>',
+    ),
+    'form' => drupal_get_form('commerce_acs_order_services_form'),
+    );
+    return $output;
+}
 function commerce_acs_order_shipping($order) {
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
   $options = array();
@@ -339,10 +349,6 @@ function commerce_acs_order_shipping($order) {
     t('Total Price')
   );
   $output = array(
-    'first_para' => array(
-      '#type' => 'markup',
-      '#markup' => '<p>A paragraph about some stuff...</p>',
-    ) ,
     'products' => array(
       '#theme' => 'table',
       '#header' => $header,
@@ -530,7 +536,7 @@ function commerce_acs_order_shipping_form($form, &$form_state, $options, $order)
 
 function commerce_acs_order_shipping_save($form, &$form_state) {
   $order = $form_state['values']['order'];
-  commerce_acs_db_insert($order, $form_state['values'], '');
+  commerce_acs_db_insert($order, $form_state['values'], '',true);
 }
 
 function commerce_acs_order_shipping_calculate_price($form, &$form_state) {

@@ -1,5 +1,17 @@
 <?php
-
+function commerce_acs_tracking($tracking_number){
+  module_load_include('inc', 'commerce_acs', 'includes/commerce_acs.wsdl');
+  try {
+    $credentials = variable_get('acs_credentials');
+    $tracking = new AcsService('https://services.acscourier.net/ACSTracking-portlet/api/axis/Plugin_acsTracking_TrackingSummaryWithStatusService?wsdl');
+    $response = $tracking->findByPod_no($credentials['commerce_acs_companyid'], $credentials['commerce_acs_companypass'], $credentials['commerce_acs_username'], $credentials['commerce_acs_password'],$tracking_number);
+    return $response;
+  }
+  catch(Exception $e) {
+    drupal_set_message($e->getMessage() , 'Warning');
+    return null;
+  }
+}
 function commerce_acs_address_suggestions($data) {
   module_load_include('inc', 'commerce_acs', 'includes/commerce_acs.wsdl');
   try {
@@ -100,8 +112,7 @@ function commerce_acs_create_voucher($order, $form_data) {
     
     if (!empty($data['options']['acs_cod_fee'])) {
       $amount = $order_wrapper->commerce_order_total->value();
-      $total_price = commerce_currency_amount_to_decimal($amount['amount'], $total_price['currency_code']);
-      
+      $total_price = commerce_currency_amount_to_decimal($amount['amount'], $amount['currency_code']);
       if ($data['cod_way'] == 'cash') {
         $way = 'Μ';
       }
@@ -115,6 +126,7 @@ function commerce_acs_create_voucher($order, $form_data) {
     $address_name = preg_replace('/[0-9]+/', '', $data['thoroughfare']);
     $service = New AcsService('https://services.acscourier.net/ACSCreateVoucher-portlet/axis/Plugin_ACSCreateVoucher_ACSVoucherService?wsdl');
     $voucher = $service->createVoucher($credentials['commerce_acs_companyid'], $credentials['commerce_acs_companypass'], $credentials['commerce_acs_username'], $credentials['commerce_acs_password'], $data['date'], $data['sender'], $data['name_line'], $address_name, $address_number, $data['locality'], $phone_number, $data['postal_code'], $validate, '', $data['packages'], $data['weight'], $data['charge'], $diakWraMexri, $total_price, $way, '', $data['notes'], $data['country'], '', $extras, $credentials['commerce_acs_customerid'], $mobile_number, '', '', '', '', '', '');
+    debug($voucher);
     return $voucher->no_pod;
   }
   catch(Exception $e) {
@@ -493,12 +505,43 @@ function commerce_acs_db_insert($order, $form_data, $voucher_id, $oid = false) {
 function commerce_acs_db_fetch($oid) {
   $query = db_select('commerce_acs', 'a')->fields('a', array(
     'voucher_id',
+    'name',
+    'uid',
+    'voucher_id',
     'date',
-    'date',
+    'time',
     'packages',
     'cod_price',
-    'cod_type'
+    'cod_type',
+    'price',
+    'shipping_options',
   ))->condition('oid', $oid)->execute();
+  return $query->fetchAll();
+}
+function commerce_acs_db_fetch_row_table($oid) {
+  $query = db_select('commerce_acs', 'a')->fields('a', array(
+    'voucher_id',
+    'date',
+    'packages',
+    'shipping_options',
+  ))->condition('oid', $oid)->execute();
+  return $query->fetchAll();
+}
+
+function commerce_acs_db_fetch_all() {
+  $query = db_select('commerce_acs', 'a')->fields('a', array(
+    'voucher_id',
+    'name',
+    'uid',
+    'voucher_id',
+    'date',
+    'time',
+    'packages',
+    'cod_price',
+    'cod_type',
+    'price',
+    'shipping_options',
+  ))->execute();
   return $query->fetchAll();
 }
 
@@ -517,4 +560,30 @@ function commerce_acs_extra_services($data) {
     $extras[] = '5Σ';
   }
   return $extras;
+}
+function commerce_acs_all_orders(){
+$query = new EntityFieldQuery;
+
+$query->entityCondition('entity_type', 'commerce_order');
+$orders =$query->execute();
+$orders = array_keys($orders['commerce_order']);
+return $orders;
+}
+function commerce_acs_status($code){
+switch($code){
+  case 1:
+    return t('Denial of receipt');
+  case 2:
+    return t('Sending failure');
+  case 3:
+    return t('No receiver');
+  case 4:
+    return t('Delivered');
+  case 5:
+    return t('To deliver');
+  case 6:
+    return t('To return');
+  case 7:
+    return t('Returned/Delivered');
+}
 }

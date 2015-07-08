@@ -1,0 +1,6 @@
+name = ACS Courier Tracking service
+description = ACS Courier tracking service
+core = 7.x
+package = Commerce ACS
+dependencies[] = commerce_acs
+
