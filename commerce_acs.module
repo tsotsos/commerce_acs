@@ -27,6 +27,7 @@ function commerce_acs_menu() {
     'context' => MENU_CONTEXT_INLINE,
     'weight' => 0,
   );
+/*
   $items['admin/commerce/orders/%commerce_order/ACS'] = array(
     'title' => 'ACS Shipping',
     'page callback' => 'commerce_acs_order_shipping',
@@ -51,6 +52,7 @@ function commerce_acs_menu() {
     'weight' => 1,
     'file' => 'includes/commerce_acs.admin.inc',
   );
+  */
   return $items;
 }
 /**
