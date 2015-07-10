@@ -254,9 +254,7 @@ function commerce_acs_wsdl_create_voucher($data) {
 function commerce_acs_address_suggestions_table($response) {
   
   if (($response == "") || (empty($response))) {
-    return $response = t("There is no such address in @locality", array(
-      '@locality' => $address_raw['locality']
-    ));
+    return $response = t("There is no such address in your Area");
   }
   else {
     
@@ -265,7 +263,7 @@ function commerce_acs_address_suggestions_table($response) {
         $res->street_label . ' ' . $res->street_num,
         $res->tk,
         $res->perioxh,
-        '<a href="http://maps.google.com/?q=' . $row->street_label . ' ' . $row->street_num . ' ' . $row->tk . ' ' . $row->perioxh . '">Map</a>'
+        '<a href="http://maps.google.com/?q=' . $res->street_label . ' ' . $res->street_num . ' ' . $res->tk . ' ' . $res->perioxh . '">Map</a>'
       );
     }
     $header = array(
