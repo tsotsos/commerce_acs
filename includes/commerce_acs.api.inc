@@ -1,10 +1,11 @@
 <?php
-function commerce_acs_tracking($tracking_number){
+
+function commerce_acs_tracking($tracking_number) {
   module_load_include('inc', 'commerce_acs', 'includes/commerce_acs.wsdl');
   try {
     $credentials = variable_get('acs_credentials');
     $tracking = new AcsService('https://services.acscourier.net/ACSTracking-portlet/api/axis/Plugin_acsTracking_TrackingSummaryWithStatusService?wsdl');
-    $response = $tracking->findByPod_no($credentials['commerce_acs_companyid'], $credentials['commerce_acs_companypass'], $credentials['commerce_acs_username'], $credentials['commerce_acs_password'],$tracking_number);
+    $response = $tracking->findByPod_no($credentials['commerce_acs_companyid'], $credentials['commerce_acs_companypass'], $credentials['commerce_acs_username'], $credentials['commerce_acs_password'], $tracking_number);
     return $response;
   }
   catch(Exception $e) {
@@ -12,6 +13,7 @@ function commerce_acs_tracking($tracking_number){
     return null;
   }
 }
+
 function commerce_acs_address_suggestions($data) {
   module_load_include('inc', 'commerce_acs', 'includes/commerce_acs.wsdl');
   try {
@@ -56,24 +58,35 @@ function commerce_acs_price_by_volume($order, $extras = '', $only_extra = false)
     $credentials = variable_get('acs_credentials');
     $physical = commerce_acs_physical_data($settings, $order);
     $shipping = $order_wrapper->commerce_customer_shipping->commerce_customer_address->value();
-    $validate = commerce_acs_address_validation($shipping);
     
-    if ($validate) {
-      $price = new AcsService('https://services.acscourier.net/ACSPriceCalculation-portlet/api/axis/Plugin_ACSPriceCalculation_ACSPriceService?wsdl');
-      $response = $price->getPriceByVolume($credentials['commerce_acs_companyid'], $credentials['commerce_acs_companypass'], $credentials['commerce_acs_username'], $credentials['commerce_acs_password'], $credentials['commerce_acs_customerid'], $credentials['commerce_acs_from_station'], $validate, $physical['weight'], $physical['width'], $physical['height'], $physical['length'], '', $extras, 2, '', '');
+    if ($shipping['country'] == $settings['country_excluded']) {
+      drupal_set_message($settings['country_excluded_message'], 'warning');
+      return $settings['coyntry_excluded_rate']*100;
     }
-    
-    if ($only_extra == false) {
-      return $response->price * 100;
+    elseif ($shipping['country'] != 'GR') {
+      drupal_set_message($settings['country_default_message'], 'warning');
+      return 0;
     }
     else {
-      $extra_price = explode('|', $response->ammountDet);
+      $validate = commerce_acs_address_validation($shipping);
       
-      if (!$response->errorMsg) {
-        return $extra_price[1] * 100;
+      if ($validate) {
+        $price = new AcsService('https://services.acscourier.net/ACSPriceCalculation-portlet/api/axis/Plugin_ACSPriceCalculation_ACSPriceService?wsdl');
+        $response = $price->getPriceByVolume($credentials['commerce_acs_companyid'], $credentials['commerce_acs_companypass'], $credentials['commerce_acs_username'], $credentials['commerce_acs_password'], $credentials['commerce_acs_customerid'], $credentials['commerce_acs_from_station'], $validate, $physical['weight'], $physical['width'], $physical['height'], $physical['length'], '', $extras, 2, '', '');
+      }
+      
+      if ($only_extra == false) {
+        return $response->price * 100;
       }
       else {
-        drupal_set_message($response->errorMsg, 'warning');
+        $extra_price = explode('|', $response->ammountDet);
+        
+        if (!$response->errorMsg) {
+          return $extra_price[1] * 100;
+        }
+        else {
+          drupal_set_message($response->errorMsg, 'warning');
+        }
       }
     }
   }
@@ -113,6 +126,7 @@ function commerce_acs_create_voucher($order, $form_data) {
     if (!empty($data['options']['acs_cod_fee'])) {
       $amount = $order_wrapper->commerce_order_total->value();
       $total_price = commerce_currency_amount_to_decimal($amount['amount'], $amount['currency_code']);
+      
       if ($data['cod_way'] == 'cash') {
         $way = 'Μ';
       }
@@ -516,6 +530,7 @@ function commerce_acs_db_fetch($oid) {
   ))->condition('oid', $oid)->execute();
   return $query->fetchAll();
 }
+
 function commerce_acs_db_fetch_row_table($oid) {
   $query = db_select('commerce_acs', 'a')->fields('a', array(
     'voucher_id',
@@ -559,29 +574,31 @@ function commerce_acs_extra_services($data) {
   }
   return $extras;
 }
-function commerce_acs_all_orders(){
-$query = new EntityFieldQuery;
 
-$query->entityCondition('entity_type', 'commerce_order');
-$orders =$query->execute();
-$orders = array_keys($orders['commerce_order']);
-return $orders;
+function commerce_acs_all_orders() {
+  $query = new EntityFieldQuery;
+  $query->entityCondition('entity_type', 'commerce_order');
+  $orders = $query->execute();
+  $orders = array_keys($orders['commerce_order']);
+  return $orders;
 }
-function commerce_acs_status($code){
-switch($code){
-  case 1:
-    return t('Denial of receipt');
-  case 2:
-    return t('Sending failure');
-  case 3:
-    return t('No receiver');
-  case 4:
-    return t('Delivered');
-  case 5:
-    return t('To deliver');
-  case 6:
-    return t('To return');
-  case 7:
-    return t('Returned/Delivered');
-}
+
+function commerce_acs_status($code) {
+  
+  switch ($code) {
+    case 1:
+      return t('Denial of receipt');
+    case 2:
+      return t('Sending failure');
+    case 3:
+      return t('No receiver');
+    case 4:
+      return t('Delivered');
+    case 5:
+      return t('To deliver');
+    case 6:
+      return t('To return');
+    case 7:
+      return t('Returned/Delivered');
+  }
 }
