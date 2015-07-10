@@ -11,13 +11,16 @@ function commerce_acs_settings_form($form, &$form_state) {
   module_load_include('inc', 'commerce_acs', 'include/commerce_acs.api');
   $settings = variable_get('acs_settings');
   $credentials = variable_get('acs_credentials');
-  
   if (($credentials['commerce_acs_soap_server'] == '') || (empty($credentials['commerce_acs_soap_server']))) {
     $server = 'https://services.acscourier.net';
   }
   else {
     $server = $credentials['commerce_acs_soap_server'];
   }
+  $country = (isset($settings['country_excluded']) ? $settings['country_excluded'] : 'none');
+  $country_rate = (isset($settings['coyntry_excluded_rate']) ? $settings['coyntry_excluded_rate'] : '');
+  $country_message = (isset($settings['country_excluded_message']) ? $settings['country_excluded_message'] : '');
+
   $form['credentials'] = array(
     '#type' => 'fieldset',
     '#title' => t('ACS API credentials') ,
@@ -78,9 +81,73 @@ function commerce_acs_settings_form($form, &$form_state) {
     '#default_value' => $credentials['commerce_acs_from_station'],
     '#required' => TRUE,
   );
+  $form['country_settings'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Country settings') ,
+    '#collapsible' => TRUE,
+  );
+  $form['country_settings']['default_rate'] = array(
+    '#type' => 'textfield',
+    '#size' => 5,
+    '#default_value' => $settings['country_default_rate'],
+    '#title' => t('Default rate') ,
+    '#description' => t('Default rate (except Greece and selected bellow country)'),
+  );
+  $form['country_settings']['default_message'] = array(      
+    '#type' => 'textfield',
+    '#default_value'=> $settings['country_default_message'],
+    '#title' => t('Default Message') ,
+    '#description' => t('Default message (except Greece and selected bellow country)'),
+  );
+  $form['country_settings']['countries_check'] = array(
+    '#type' => 'radios',
+    '#title' => t('Country rate') ,
+    '#options' => array('yes'=>t('Yes'), 'no' =>t('No')),
+    '#default_value'=> $settings['countries_check'],
+    '#description' => t('Check if you want a country specific rate'),
+  );
+  $form['country_settings']['country'] = array(
+    '#type' => 'select',
+    '#options'=> array_merge (array('none'=>t('None')),_addressfield_country_options_list()),
+    '#title' => t('Countries') ,
+    '#default_value'=> $country,
+    '#states' => array(
+      'visible' => array(
+      ':input[name="countries_check"]' => array(
+        'value' => 'yes'
+      ) ,
+      ) ,
+    ) ,
+  );
+  $form['country_settings']['country_rate'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Rate') ,
+    '#default_value' => $country_rate,
+    '#size' => 5,
+    '#states' => array(
+      'visible' => array(
+      ':input[name="countries_check"]' => array(
+        'value' => 'yes'
+      ) ,
+      ) ,
+    ) ,
+  );
+  $form['country_settings']['country_message'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Message') ,
+    '#default_value'=> $country_message,
+    '#description' => t('Since there is no way to be sure for shipping cost, please write a message that will appeared to the customer'),
+    '#states' => array(
+      'visible' => array(
+      ':input[name="countries_check"]' => array(
+        'value' => 'yes'
+      ) ,
+      ) ,
+    ) ,
+  );
   $form['settings'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Weight and Dimensions settings') ,
+    '#title' => t('Weight, Dimensions and country settings') ,
     '#collapsible' => TRUE,
     '#description' => t('Select weight and demensions settings') ,
   );
@@ -259,6 +326,14 @@ function commerce_acs_settings_form_submit($form, &$form_state) {
   $settings['weight_field'] = $form_state['values']['weight_field'];
   $settings['weight_unit'] = $form_state['values']['weight_unit'];
   $settings['weight_physical'] = $form_state['values']['weight_physical'];
+  $settings['country_default_rate'] = $form_state['values']['default_rate'];
+  $settings['country_default_message'] = $form_state['values']['default_message'];
+  $settings['countries_check'] = $form_state['values']['countries_check'];
+  if ($form_state['values']['countries_check'] == 'yes'){
+  $settings['country_excluded'] = $form_state['values']['country'];
+  $settings['coyntry_excluded_rate'] = $form_state['values']['country_rate'];
+  $settings['country_excluded_message'] = $form_state['values']['country_message'];
+  }
   variable_set('acs_settings', $settings);
   variable_set('acs_credentials', $credentials);
 }
