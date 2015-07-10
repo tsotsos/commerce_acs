@@ -65,7 +65,7 @@ function commerce_acs_price_by_volume($order, $extras = '', $only_extra = false)
     }
     elseif ($shipping['country'] != 'GR') {
       drupal_set_message($settings['country_default_message'], 'warning');
-      return 0;
+      return $settings['country_default_rate']*100;
     }
     else {
       $validate = commerce_acs_address_validation($shipping);
