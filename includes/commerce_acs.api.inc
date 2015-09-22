@@ -366,6 +366,7 @@ function commerce_acs_physical_data($settings, $order) {
   $data['length'] = $total_length;
   $data['width'] = $total_width;
   $data['height'] = $total_height;
+  debug($data);
   return $data;
 }
 /*
