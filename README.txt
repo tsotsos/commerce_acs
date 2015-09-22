@@ -1,3 +1,7 @@
+!!!!!! ATTENTION !!!!!!!!!!!! ATTENTION !!!!!!!!!!!! ATTENTION !!!!
+Commerce ACS is not read yet. There are Shipping issues because of 
+lack co-operation with ACS company. 
+
 INTRODUCTION
 ------------
 The Commerce ACS module is an intergration module for Greek Courier
